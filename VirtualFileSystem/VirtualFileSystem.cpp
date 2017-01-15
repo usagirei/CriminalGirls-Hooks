@@ -25,14 +25,15 @@ adCloseHandle VirtualFileSystem::ogCloseHandle;
 typedef std::map<HANDLE, RamFS::Tracker*> RamVFS_ViewMap;
 
 RamVFS_ViewMap* openViews;
-RamFS* dataEnVFS;
-RamFS* dataJpVFS;
+
+RamFS* VirtualFileSystem::DataEn;
+RamFS* VirtualFileSystem::DataJp;
 
 void VirtualFileSystem::Initialize()
 {
 	openViews = new RamVFS_ViewMap();
-	dataEnVFS = nullptr;
-	dataJpVFS = nullptr;
+	DataEn = nullptr;
+	DataJp = nullptr;
 
 	TCHAR dllPath[260];
 	GetSystemDirectory(dllPath, sizeof(dllPath) / sizeof(_TCHAR));
@@ -40,23 +41,10 @@ void VirtualFileSystem::Initialize()
 	HMODULE msvcr = LoadLibrary(dllPath);
 
 	RamFS::LstGen("data_en");
-	//VFSLstGen("data_jp");
+	//RamFS::LstGen("data_jp");
 
-	dataEnVFS = RamFS::Open("data_en");
-
-	//RAMVFS_VIEW* view = VFSCreateView(dataEnVFS);
-	//uint64_t toWrite = dataEnVFS->TotalSize;
-	//FILE* fp = fopen("data/data.dat", "wb");
-	//char buf[64*1024];
-	//DWORD read;
-	//while (toWrite > 0) {
-	   // VFSRead(view, buf, sizeof(buf), &read);
-	   // fwrite(buf, 1, read, fp);
-	   // toWrite -= read;
-	//}
-	//fclose(fp);
-
-   //dataJpVFS = VFSOpen("data_jp");
+	DataEn = RamFS::Open("data_en");
+	//DataJp = RamFS::Open("data_jp");
 
 	IATHook32<adCreateFileW>(msvcr, HK_KERNEL32_MODULE, "CreateFileW", VirtualFileSystem::CreateFileW, &VirtualFileSystem::ogCreateFileW);
 	IATHook32<adCreateFileA>(msvcr, HK_KERNEL32_MODULE, "CreateFileA", VirtualFileSystem::CreateFileA, &VirtualFileSystem::ogCreateFileA);
@@ -69,9 +57,9 @@ void VirtualFileSystem::Initialize()
 HANDLE WINAPI VirtualFileSystem::CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
 {
 	HANDLE hFile;
-	if (dataEnVFS && _wcsicmp(lpFileName, L"data\\data_en.dat") == 0) {
+	if (DataEn && _wcsicmp(lpFileName, L"data\\data_en.dat") == 0) {
 		hFile = ogCreateFileW(L"data\\data_en.lst", dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-		RamFS::Tracker* view = dataEnVFS->CreateTracker();
+		RamFS::Tracker* view = DataEn->CreateTracker();
 		openViews->insert(RamVFS_ViewMap::value_type(hFile, view));
 	}
 	else {
@@ -86,9 +74,9 @@ HANDLE WINAPI VirtualFileSystem::CreateFileW(LPCWSTR lpFileName, DWORD dwDesired
 HANDLE WINAPI VirtualFileSystem::CreateFileA(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
 {
 	HANDLE hFile;
-	if (dataEnVFS && _strcmpi(lpFileName, "data\\data_en.dat") == 0) {
+	if (DataEn && _strcmpi(lpFileName, "data\\data_en.dat") == 0) {
 		hFile = ogCreateFileA("data\\data_en.lst", dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-		RamFS::Tracker* view = dataEnVFS->CreateTracker();
+		RamFS::Tracker* view = DataEn->CreateTracker();
 		openViews->insert(RamVFS_ViewMap::value_type(hFile, view));
 	}
 	else {

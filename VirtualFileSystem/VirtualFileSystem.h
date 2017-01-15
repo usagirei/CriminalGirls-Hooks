@@ -1,9 +1,13 @@
 #include "stdafx.h"
+#include "RamVFS.h"
 #include "apiDelegates.h"
 
 class VirtualFileSystem {
 public:
 	static void Initialize();
+
+	static RamFS* DataEn;
+	static RamFS* DataJp;
 
 private:
 	static adCreateFileW ogCreateFileW;
