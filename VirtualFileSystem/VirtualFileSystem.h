@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "RamVFS.h"
+#include "RamFS.h"
 #include "apiDelegates.h"
 
 class VirtualFileSystem {

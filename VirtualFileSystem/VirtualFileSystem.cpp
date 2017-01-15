@@ -10,7 +10,7 @@
 #include "iathook.h"
 #include "VirtualFileSystem.h"
 
-#include "RamVFS.h"
+#include "RamFS.h"
 
 #define HK_MSVCRUNTIME_MODULE _TEXT("\\msvcr120.dll")
 #define HK_KERNEL32_MODULE "kernel32.dll"
