@@ -30,10 +30,10 @@
     <ClInclude Include="VirtualFileSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="RamVFS.h">
+    <ClInclude Include="PS3FS.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PS3FS.h">
+    <ClInclude Include="RamFS.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -44,10 +44,10 @@
     <ClCompile Include="dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RamVFS.cpp">
+    <ClCompile Include="VirtualFileSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="VirtualFileSystem.cpp">
+    <ClCompile Include="RamFS.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

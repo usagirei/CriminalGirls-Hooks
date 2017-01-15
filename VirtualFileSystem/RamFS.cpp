@@ -1,4 +1,4 @@
-#include "RamVFS.h"
+#include "RamFS.h"
 #include "stdafx.h"
 
 #include <iostream>
