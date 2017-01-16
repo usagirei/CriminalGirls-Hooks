@@ -22,6 +22,7 @@ struct OggData{
 	uint32_t Size;
 };
 
+char loadedTpk[32] = { 0 };
 char* tpkData;
 OggData* oggData;
 int nOggFiles;
@@ -63,9 +64,9 @@ void DetectTargetTPK(char* fName) {
 	int lvl = atoi(ibuf) - 1;
 
 	ibuf[0] = *(buf + len - 3);
-	int minigame = atoi(ibuf);
+	int minigame = atoi(ibuf) - 1;
 
-	strncpy_s(nBuf, fName, 3) - 1;
+	strncpy_s(nBuf, fName, 3);
 
 	if (minigame == 4)
 		lvl = 0;
@@ -73,6 +74,10 @@ void DetectTargetTPK(char* fName) {
 	lvl = min(lvl, 2);
 
 	sprintf_s(buf, "pan_react_%s%02d_%d.tpk", nBuf, minigame, lvl);
+	if (strcmp(buf, loadedTpk) == 0)
+		return;
+
+	strcpy_s(loadedTpk, buf);
 
 	tcout << "Loading TPK " << buf << "\n";
 
