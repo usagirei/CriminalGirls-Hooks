@@ -3,7 +3,6 @@
 #include "stdafx.h"
 
 
-
 class RamFS {
 public:
 	class Tracker {
@@ -22,6 +21,11 @@ public:
 		uint64_t BaseOffset;
 		PS3FS_HEADER_ENTRY* BinaryEntry;
 	};
+
+	typedef void (*FileReadCallback)(char* fileName);
+
+	// TODO: Proper Invocation List
+	FileReadCallback OnFileRead;
 
 	Entry* Entries;
 	uint64_t NumEntries;

@@ -26,9 +26,12 @@ void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 {
 	RamFS* vfs = this->FileSystem;
 
+	bool callback = false;
+
 	*nBytesRead = 0;
 	while (nBytesToRead > 0) {
 		if (this->Position < vfs->BinaryHeaderSize) {
+			tcout << "VFS::Read::Header\n";
 			const uint64_t srcOffset = this->Position;
 			const uint64_t srcRemainder = vfs->BinaryHeaderSize - srcOffset;
 			const uint32_t toRead = min(srcRemainder, nBytesToRead);
@@ -52,6 +55,15 @@ void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 				bool beforeEnd = srcOffset < (bEntry->Offset + rEntry->FileSize);
 				bool between = afterStart && beforeEnd;
 				if (between) {
+					if (!callback) {
+
+						if (vfs->OnFileRead)
+							(*vfs->OnFileRead)(bEntry->Name);
+
+						//tcout << "VFS::Read::File::" << bEntry->Name << "\n";
+						callback = true;
+					}
+
 					found = true;
 					const int64_t vOffset = srcOffset - bEntry->Offset;
 					const int64_t fOffset = rEntry->BaseOffset + vOffset;
@@ -188,6 +200,7 @@ RamFS* RamFS::Open(const char* pName) {
 
 	const int PAD = 0;
 	RamFS* vfs = new RamFS();
+	vfs->OnFileRead = nullptr;
 	vfs->NumEntries = nFiles;
 	vfs->Entries = new RamFS::Entry[nFiles];
 	vfs->BinaryHeader = PS3FS_HEADER::Prealloc(nFiles, &(vfs->BinaryHeaderSize));
