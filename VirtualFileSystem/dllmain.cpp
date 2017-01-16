@@ -72,7 +72,7 @@ void DetectTargetTPK(char* fName) {
 
 	lvl = min(lvl, 2);
 
-	sprintf_s(buf, "pan_react_%s%02d_%d.tpk", nBuf, lvl, minigame);
+	sprintf_s(buf, "pan_react_%s%02d_%d.tpk", nBuf, minigame, lvl);
 
 	tcout << "Loading TPK " << buf << "\n";
 
