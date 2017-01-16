@@ -173,32 +173,28 @@ void RamFS::LstGen(const char* pName) {
 
 RamFS* RamFS::Open(const char* pName) {
 	wchar_t entryNameBuf[48];
-	char lstNameBuf[64];
+	char datNameBuf[64];
 	wchar_t dirNameBuf[64];
 	wchar_t fileNameBuf[128];
 
-	strcpy_s(lstNameBuf, "data/");
-	strcat_s(lstNameBuf, pName);
-	MultiByteToWideChar(CP_ACP, 0, lstNameBuf, -1, dirNameBuf, 64);
-	strcat_s(lstNameBuf, ".lst");
+	strcpy_s(datNameBuf, "data/");
+	strcat_s(datNameBuf, pName);
+	MultiByteToWideChar(CP_ACP, 0, datNameBuf, -1, dirNameBuf, 64);
+	strcat_s(datNameBuf, ".dat");
 	wcscat_s(dirNameBuf, L"/");
 
-	FILE* inDataLstEn;
-	int error = fopen_s(&inDataLstEn, lstNameBuf, "rb");
+	FILE* inDatFile;
+	int error = fopen_s(&inDatFile, datNameBuf, "rb");
 
 	if (error != 0) {
-		tcout << "Failed to Open Lst File: " << lstNameBuf;
+		tcout << "Failed to Open Dat File: " << datNameBuf;
 		return nullptr;
 	}
 
-	int nFiles = -1;
-	while (!feof(inDataLstEn)) {
-		fgets((char*)entryNameBuf, 48, inDataLstEn);
-		nFiles++;
-	}
-	fseek(inDataLstEn, 0, FILE_BEGIN);
+	uint64_t nFiles = 0;
+	fseek(inDatFile, 8, FILE_BEGIN);
+	fread(&nFiles, 1, 8, inDatFile);
 
-	const int PAD = 0;
 	RamFS* vfs = new RamFS();
 	vfs->OnFileRead = nullptr;
 	vfs->NumEntries = nFiles;
@@ -212,10 +208,10 @@ RamFS* RamFS::Open(const char* pName) {
 
 		rEntry->BinaryEntry = bEntry;
 
-		fgets(bEntry->Name, 48, inDataLstEn);
-		size_t ln = strlen(bEntry->Name) - 1;
-		if (*bEntry->Name && bEntry->Name[ln] == '\n')
-			bEntry->Name[ln] = '\0';
+		PS3FS_HEADER_ENTRY datEntry;
+		fread(&datEntry, 1, sizeof(PS3FS_HEADER_ENTRY), inDatFile);
+
+		strcpy(bEntry->Name, datEntry.Name);
 
 		MultiByteToWideChar(932, MB_PRECOMPOSED, bEntry->Name, -1, entryNameBuf, 48);
 
@@ -227,33 +223,32 @@ RamFS* RamFS::Open(const char* pName) {
 		if (!error) {
 			fseek(filePtr, 0, FILE_END);
 			int fileSize = ftell(filePtr);
-			int fileSizePad = (fileSize + PAD) & ~PAD;
 			fclose(filePtr);
 
 			uint32_t fileNameLen = wcslen(fileNameBuf);
 			rEntry->FileName = new wchar_t[fileNameLen + 1];
 			wcscpy_s(rEntry->FileName, fileNameLen + 1, fileNameBuf);
 			rEntry->BaseOffset = 0;
-			rEntry->FileSize = fileSizePad;
+			rEntry->FileSize = fileSize;
 
 			bEntry->Size = fileSize;
 			bEntry->Offset = vfs->TotalSize;
 			vfs->TotalSize += fileSize;
 		}
 		else {
-			rEntry->FileName = nullptr;
-			char errBuf[100];
-			strerror_s(errBuf, errno);
-			tcout << _TEXT("Error Opening File #") << i << " - " << bEntry->Name << " - Reason: " << errBuf;
+			uint32_t fileNameLen = strlen(datNameBuf);
+			rEntry->FileName = new wchar_t[fileNameLen + 1];
+			MultiByteToWideChar(CP_ACP, 0, datNameBuf, -1, rEntry->FileName, fileNameLen);
+			rEntry->FileName[fileNameLen] = 0;
+			rEntry->BaseOffset = datEntry.Offset;
+			rEntry->FileSize = datEntry.Size;
 
-			RamFS::Close(vfs);
-
-			vfs = nullptr;
-
-			break;
+			bEntry->Size = datEntry.Size;
+			bEntry->Offset = vfs->TotalSize;
+			vfs->TotalSize += datEntry.Size;
 		}
 	}
-	fclose(inDataLstEn);
+	fclose(inDatFile);
 
 	return vfs;
 }
