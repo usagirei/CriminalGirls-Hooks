@@ -31,7 +31,6 @@ void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 	*nBytesRead = 0;
 	while (nBytesToRead > 0) {
 		if (this->Position < vfs->BinaryHeaderSize) {
-			tcout << "VFS::Read::Header\n";
 			const uint64_t srcOffset = this->Position;
 			const uint64_t srcRemainder = vfs->BinaryHeaderSize - srcOffset;
 			const uint32_t toRead = min(srcRemainder, nBytesToRead);
@@ -60,7 +59,6 @@ void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 						if (vfs->OnFileRead)
 							(*vfs->OnFileRead)(bEntry->Name);
 
-						//tcout << "VFS::Read::File::" << bEntry->Name << "\n";
 						callback = true;
 					}
 
@@ -79,7 +77,7 @@ void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 
 					if (read != toRead)
 					{
-						tcout << "FUCK";
+						tcout << "Misread?\n";
 					}
 
 					*nBytesRead += toRead;

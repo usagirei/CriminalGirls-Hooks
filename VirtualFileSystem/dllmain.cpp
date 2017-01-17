@@ -9,6 +9,8 @@
 #include "stdafx.h"
 #include "VirtualFileSystem.h"
 
+#include "patch.h"
+
 typedef PDWORD(WINAPI *adDirect3DCreate9)(UINT sdkVersion);
 #define HK_ENTRYPOINT_SYMBOL Direct3DCreate9
 #define HK_ENTRYPOINT_DELEGATE adDirect3DCreate9
@@ -84,8 +86,6 @@ void DetectTargetTPK(char* fName) {
 	uint32_t ba = (uint32_t)GetModuleHandle(nullptr);
 	uint32_t qm = _DR5(ba, 0x001C9554, 0x1C, 0x54C, 0x5E8, 0x1E7C);
 
-	tcout << fName << "\n";
-
 	char nBuf[4];
 	char ibuf[] = "x";
 	strncpy_s(buf, fName, len - 11);
@@ -139,19 +139,53 @@ void DetectTargetTPK(char* fName) {
 	}
 }
 
+void ApplyPatches() {
+	uint8_t *base = (uint8_t*)GetModuleHandle(0);
+	for (int i = 0; i < hPatchCount; ++i) {
+		const uint32_t offset = hPatches[i].Address;
+		const uint32_t size = hPatches[i].Size;
+		const uint8_t* data = hPatches[i].Data;
+		uint8_t* addr = base + offset;
+
+		DWORD accessProtectionValue, accessProtec;
+		int vProtect = VirtualProtect(addr, size, PAGE_EXECUTE_READWRITE, &accessProtectionValue);
+		memcpy(addr, data, size);
+		vProtect = VirtualProtect(addr, size, accessProtectionValue, &accessProtec);
+	}
+}
+
+void Initialize() {
+
+	tcout << "Applying Patches...\n";
+	ApplyPatches();
+
+	srand(time(nullptr));
+
+	tpkTracker = nullptr;
+	oggData = nullptr;
+	nOggFiles = 0;
+	tpkData = nullptr;
+
+	tcout << "Initializing Virtual File System...\n";
+	VirtualFileSystem::Initialize();
+
+	if (VirtualFileSystem::DataEn) {
+		VirtualFileSystem::DataEn->OnFileRead = &DetectTargetTPK;
+		tpkTracker = VirtualFileSystem::DataEn->CreateTracker();
+		tpkData = new char[4 * 1024 * 1024];
+	}
+	else {
+		tcout << "Couldn't Initialize Virtual File System!\n";
+	}
+
+}
+
 extern "C" BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
 {
 	switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
 		{
-			srand(time(nullptr));
-
-			tpkTracker = nullptr;
-			oggData = nullptr;
-			nOggFiles = 0;
-			tpkData = nullptr;
-
 			AllocConsole();
 			freopen("CONOUT$", "w", stdout);
 
@@ -167,17 +201,7 @@ extern "C" BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOI
 
 			ogEntryPointCall = (HK_ENTRYPOINT_DELEGATE)GetProcAddress(hEntry, HK_ENTRYPOINT_SYMBOL_STR);
 
-			VirtualFileSystem::Initialize();
-
-			if (VirtualFileSystem::DataEn) {
-				VirtualFileSystem::DataEn->OnFileRead = &DetectTargetTPK;
-				tpkTracker = VirtualFileSystem::DataEn->CreateTracker();
-				tpkData = new char[4 * 1024 * 1024];
-			}
-			else {
-				tcout << "Couldn't Initialize Virtual File System";
-			}
-
+			Initialize();
 			break;
 		}
 		case DLL_THREAD_ATTACH:

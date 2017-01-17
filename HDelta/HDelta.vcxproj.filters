@@ -15,28 +15,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
     <ClInclude Include="stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="targetver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="apiDelegates.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="iatHook.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VirtualFileSystem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PS3FS.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="RamFS.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="patch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -44,19 +29,8 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="dllmain.cpp">
+    <ClCompile Include="hDelta.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="VirtualFileSystem.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="RamFS.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Module.def">
-      <Filter>Source Files</Filter>
-    </None>
   </ItemGroup>
 </Project>
