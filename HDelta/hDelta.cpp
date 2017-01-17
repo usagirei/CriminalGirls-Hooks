@@ -59,8 +59,8 @@ int _tmain(int argc, TCHAR **argv)
 	TCHAR *patchName = argv[3];
 
 	uint32_t cleanSize, inputSize, vAddr;
-	unsigned char* inputCode = LoadSection(inputName,".text", &inputSize, &vAddr);
-	unsigned char* cleanCode = LoadSection(cleanName,".text", &cleanSize, &vAddr);
+	unsigned char* inputCode = LoadSection(inputName, ".text", &inputSize, &vAddr);
+	unsigned char* cleanCode = LoadSection(cleanName, ".text", &cleanSize, &vAddr);
 
 	std::ofstream patch(patchName);
 
