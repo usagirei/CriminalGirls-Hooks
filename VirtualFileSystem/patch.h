@@ -1,6 +1,5 @@
 /*
  * Auto Generated Header File. Do Not Modify.
- * Generated On Jan 17, 2017 - 18:52:56
  * Target Data: steam_criminal_mod.exe
  * Reference Data: steam_criminal_orig.exe
  */

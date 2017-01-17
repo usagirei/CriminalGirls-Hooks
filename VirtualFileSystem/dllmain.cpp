@@ -10,6 +10,7 @@
 #include "VirtualFileSystem.h"
 
 #include "patch.h"
+#include "version.h"
 
 typedef PDWORD(WINAPI *adDirect3DCreate9)(UINT sdkVersion);
 #define HK_ENTRYPOINT_SYMBOL Direct3DCreate9
@@ -155,6 +156,10 @@ void ApplyPatches() {
 }
 
 void Initialize() {
+
+	tcout << VER_PRODUCTNAME_STR << " " << VER_VERSION_STRING << "\n";
+	tcout << "Git Commit Hash: " << GIT_COMMIT_HASH << "\n";
+	tcout << "Git Commit Date: " << GIT_COMMIT_DATE << "\n\n";
 
 	tcout << "Applying Patches...\n";
 	ApplyPatches();

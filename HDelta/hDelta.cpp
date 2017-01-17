@@ -70,7 +70,7 @@ int _tmain(int argc, TCHAR **argv)
 	std::vector<uint8_t>* curData = new std::vector<uint8_t>();
 	std::vector<PATCH_DEF>* patches = new std::vector<PATCH_DEF>();
 
-	for (int i = 0; i < cleanSize; ++i) {
+	for (unsigned int i = 0; i < cleanSize; ++i) {
 		char in = inputCode[i];
 		char cl = cleanCode[i];
 
@@ -104,7 +104,7 @@ int _tmain(int argc, TCHAR **argv)
 				curPatch->pop_back();
 			}
 
-			for (int j = 0; j < curPatch->size(); ++j) {
+			for (unsigned int j = 0; j < curPatch->size(); ++j) {
 				uint8_t value = (curPatch->at(j)) ^ (curData->at(j));
 				curPatch->at(j) = value;
 			}
@@ -143,7 +143,7 @@ int _tmain(int argc, TCHAR **argv)
 	
 	patch << "/*\n";
 	patch << " * Auto Generated Header File. Do Not Modify.\n";
-	patch << " * Generated On " << dateBuf << " - " << timeBuf << "\n";
+	// patch << " * Generated On " << dateBuf << " - " << timeBuf << "\n";
 	patch << " * Target Data: " << inputBuf << "\n";
 	patch << " * Reference Data: " << cleanBuf << "\n";
 	patch << " */\n";
@@ -162,13 +162,13 @@ int _tmain(int argc, TCHAR **argv)
 	patch << "} HPATCH_DATA;\n";
 	patch << "\n";
 
-	for (int i = 0; i < patches->size(); ++i) {
+	for (unsigned int i = 0; i < patches->size(); ++i) {
 		PATCH_DEF p = patches->at(i);
 
 		patch << "const unsigned int hDelta_" << DEC2(i) << "_base = " << HEX8(p.Addr) << ";\n";
 		patch << "const unsigned int hDelta_" << DEC2(i) << "_size = " << DEC(p.Size) << ";\n";
 		patch << "const unsigned char hDelta_" << DEC2(i) << "_data[] = {\n\t";
-		for (int j = 0; j < p.Size; ++j) {
+		for (unsigned int j = 0; j < p.Size; ++j) {
 			uint8_t value = p.Data[j];
 			if (j == p.Size - 1)
 				patch << HEX2(value);
@@ -183,7 +183,7 @@ int _tmain(int argc, TCHAR **argv)
 
 	patch << "const unsigned int hPatchCount = " << DEC(patches->size()) << ";\n";
 	patch << "const HPATCH_DATA hPatches[] = {\n";
-	for (int i = 0; i < patches->size(); ++i) {
+	for (unsigned int i = 0; i < patches->size(); ++i) {
 		patch << "   { hDelta_" << DEC2(i) << "_base, hDelta_" << DEC2(i) << "_size, hDelta_" << DEC2(i) << "_data }";
 		if (i == patches->size() - 1)
 			patch << "\n";
@@ -197,7 +197,7 @@ int _tmain(int argc, TCHAR **argv)
 
 	delete curData;
 	delete curPatch;
-	for (int i = 0; i < patches->size(); i++)
+	for (unsigned int i = 0; i < patches->size(); i++)
 		delete patches->at(i).Data;
 	delete patches;
 };

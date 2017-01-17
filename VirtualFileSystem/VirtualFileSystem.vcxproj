@@ -99,8 +99,16 @@
       <ModuleDefinitionFile>Module.def</ModuleDefinitionFile>
     </Link>
     <PreBuildEvent>
-      <Command>"$(TargetDir)..\hDelta\hDelta.exe" "$(SolutionDir)Patch\steam_criminal_mod.exe" "$(SolutionDir)Patch\steam_criminal_orig.exe" "$(ProjectDir)patch.h"</Command>
+      <Command>"$(TargetDir)..\hDelta\hDelta.exe" "$(SolutionDir)Patch\steam_criminal_mod.exe" "$(SolutionDir)Patch\steam_criminal_orig.exe" "$(ProjectDir)patch.h"
+git log --pretty=format:"#define GIT_COMMIT_HASH \"%%h\"" -n 1 &gt; dynversion.h
+echo[ &gt;&gt; dynversion.h
+git log --pretty=format:"#define GIT_COMMIT_DATE \"%%25ci\"" -n 1 &gt;&gt; dynversion.h
+echo[ &gt;&gt; dynversion.h</Command>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>echo #define GIT_COMMIT_HASH "" &gt; dynversion.h
+echo #define GIT_COMMIT_DATE "" &gt;&gt; dynversion.h</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -134,8 +142,17 @@
       <ModuleDefinitionFile>Module.def</ModuleDefinitionFile>
     </Link>
     <PreBuildEvent>
-      <Command>"$(TargetDir)..\hDelta\hDelta.exe" "$(SolutionDir)Patch\steam_criminal_mod.exe" "$(SolutionDir)Patch\steam_criminal_orig.exe" "$(ProjectDir)patch.h"</Command>
+      <Command>"$(TargetDir)..\hDelta\hDelta.exe" "$(SolutionDir)Patch\steam_criminal_mod.exe" "$(SolutionDir)Patch\steam_criminal_orig.exe" "$(ProjectDir)patch.h"
+git log --pretty=format:"#define GIT_COMMIT_HASH \"%%h\"" -n 1 &gt; dynversion.h
+echo[ &gt;&gt; dynversion.h
+git log --pretty=format:"#define GIT_COMMIT_DATE \"%%25ci\"" -n 1 &gt;&gt; dynversion.h
+echo[ &gt;&gt; dynversion.h</Command>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>echo #define GIT_COMMIT_HASH "" &gt; dynversion.h
+echo #define GIT_COMMIT_DATE "" &gt;&gt; dynversion.h
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -157,12 +174,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="apiDelegates.h" />
+    <ClInclude Include="dynversion.h" />
     <ClInclude Include="iatHook.h" />
     <ClInclude Include="patch.h" />
     <ClInclude Include="PS3FS.h" />
     <ClInclude Include="RamFS.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="version.h" />
     <ClInclude Include="VirtualFileSystem.h" />
   </ItemGroup>
   <ItemGroup>
@@ -186,6 +206,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Module.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Version.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
