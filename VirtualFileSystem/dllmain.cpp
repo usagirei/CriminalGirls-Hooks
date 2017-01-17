@@ -17,26 +17,52 @@ typedef PDWORD(WINAPI *adDirect3DCreate9)(UINT sdkVersion);
 #define HK_ENTRYPOINT_SYMBOL_STR TOSTRING(HK_ENTRYPOINT_SYMBOL)
 HK_ENTRYPOINT_DELEGATE ogEntryPointCall;
 
-struct OggData{
+struct OggData {
 	uint8_t* Data;
 	uint32_t Size;
 };
+
+#define _DR1(base,offset) *(uint32_t*)((uint8_t*)base + offset)
+#define _DR2(b, o1, o2) _DR1(_DR1(b,o1),o2)
+#define _DR3(b, o1, o2, o3) _DR1(_DR2(b,o1,o2),o3)
+#define _DR4(b, o1, o2, o3, o4) _DR1(_DR3(b,o1,o2,o3),o4)
+#define _DR5(b, o1, o2, o3, o4, o5) _DR1(_DR4(b,o1,o2,o3,o4),o5)
+
+
 
 char loadedTpk[32] = { 0 };
 char* tpkData;
 OggData* oggData;
 int nOggFiles;
 RamFS::Tracker* tpkTracker;
+uint32_t breathCooldown = 0;
+
+#define PLAY_REACT 0xFFFFFFFF
+#define PLAY_BREAT 0xFFFFFFFE
 
 extern "C" PDWORD WINAPI HK_ENTRYPOINT_SYMBOL(UINT sdkVersion) {
 
-	if (sdkVersion == 0xFFFFFFFF) {
-		int nth = rand() % nOggFiles;
-		tcout << "Playing Random OGG File [" << nth << "]\n";
-		return (PDWORD)&oggData[nth];
-	}
-	else {
+	if (!(sdkVersion & 0x80000000)) {
 		return ogEntryPointCall(sdkVersion);
+	}
+
+	int nth = rand() % nOggFiles;
+	switch (sdkVersion) {
+		case PLAY_REACT:
+			tcout << "Playing Reaction Sound [" << nth << "]\n";
+			return (PDWORD)&oggData[nth];
+		case PLAY_BREAT:
+			if (breathCooldown == 0) {
+				breathCooldown = 60;
+				tcout << "Playing Breathing Sound [" << nth << "]\n";
+				return (PDWORD)&oggData[nth];
+			}
+			else {
+				--breathCooldown;
+				return nullptr;
+			}
+		default:
+			return nullptr;
 	}
 }
 
@@ -54,6 +80,11 @@ void DetectTargetTPK(char* fName) {
 	int cmp = _stricmp(buf, "json");
 	if (cmp != 0)
 		return;
+
+	uint32_t ba = (uint32_t)GetModuleHandle(nullptr);
+	uint32_t qm = _DR5(ba, 0x001C9554, 0x1C, 0x54C, 0x5E8, 0x1E7C);
+
+	tcout << fName << "\n";
 
 	char nBuf[4];
 	char ibuf[] = "x";
