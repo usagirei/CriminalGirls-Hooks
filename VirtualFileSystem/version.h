@@ -18,10 +18,10 @@
                                     "." STRINGIZE(VERSION_BUILD)    \
 
 #define VER_FILE_DESCRIPTION_STR    "Criminal Girls: Invite Only Patches - " \
-									"Commit " GIT_COMMIT_HASH
+                                    "Commit " GIT_COMMIT_HASH
 
-#define VER_FILE_VERSION_STR		VER_VERSION_STRING
-#define VER_COMPANY_STR				"Criminal Girls Modding Team" 
+#define VER_FILE_VERSION_STR        VER_VERSION_STRING
+#define VER_COMPANY_STR             "Criminal Girls Modding Team" 
  
 #define VER_PRODUCTNAME_STR         "Criminal Girls: Invite Only Patches"
 #define VER_PRODUCT_VERSION         VER_FILE_VERSION
