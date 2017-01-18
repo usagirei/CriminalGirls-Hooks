@@ -11,6 +11,7 @@
 
 #include "patch.h"
 #include "version.h"
+#include "triggers.h"
 
 typedef PDWORD(WINAPI *adDirect3DCreate9)(UINT sdkVersion);
 #define HK_ENTRYPOINT_SYMBOL Direct3DCreate9
@@ -26,93 +27,111 @@ HK_ENTRYPOINT_DELEGATE ogEntryPointCall;
 #define _DR4(b, o1, o2, o3, o4) _DR1(_DR3(b,o1,o2,o3),o4)
 #define _DR5(b, o1, o2, o3, o4, o5) _DR1(_DR4(b,o1,o2,o3,o4),o5)
 
+extern "C" PDWORD WINAPI HK_ENTRYPOINT_SYMBOL(UINT sdkVersion);
+extern "C" BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved);
+void TryLoadAudioTPK(char *fname);
+void ApplyPatches();
+void Initialize();
 
-struct OggData {
-	uint8_t* Data;
-	uint32_t Size;
-};
-
-struct {
-	uint8_t Option;
-	uint8_t MaxTries;
-	uint8_t Tries;
-	uint8_t MiniGame;
-	uint8_t Level;
-	char Girl[4];
-} GameState;
-
-struct {
-	OggData* OggDataA = nullptr;
-	OggData* OggDataB = nullptr;
-
-	int NumOggFilesA = 0;
-	int NumOggFilesB = 0;
-
-	char* TpkDataA = nullptr;
-	char* TpkDataB = nullptr;
-
-	uint32_t Delay = 0;
-} AudioState;
-
-int lastRand;
 char  lastModel[48];
 RamFS::Tracker* tpkTracker;
 
-#define TRIGGER_SUCCESS 0xFFFFFFFF
-#define TRIGGER_DIALOG 0xFFFFFFFE
-#define TRIGGER_FAILURE 0xFFFFFFFD
+BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
+{
+	switch (ul_reason_for_call)
+	{
+		case DLL_PROCESS_ATTACH:
+		{
+			AllocConsole();
+			freopen("CONOUT$", "w", stdout);
 
-extern "C" PDWORD WINAPI HK_ENTRYPOINT_SYMBOL(UINT sdkVersion) {
+			TCHAR dllPath[260];
+			const UINT dllPathSz = sizeof(dllPath) / sizeof(_TCHAR);
+			const TCHAR* epModule = HK_ENTRYPOINT_MODULE;
+			const UINT epModuleSz = sizeof(HK_ENTRYPOINT_MODULE) / sizeof(_TCHAR);
+
+			GetSystemDirectory(dllPath, dllPathSz);
+			_tcsncat_s(dllPath, dllPathSz, _TEXT("\\"), 2);
+			_tcsncat_s(dllPath, dllPathSz, epModule, epModuleSz);
+			HMODULE hEntry = LoadLibrary(dllPath);
+
+			ogEntryPointCall = (HK_ENTRYPOINT_DELEGATE)GetProcAddress(hEntry, HK_ENTRYPOINT_SYMBOL_STR);
+
+			Initialize();
+			break;
+		}
+		case DLL_THREAD_ATTACH:
+		case DLL_THREAD_DETACH:
+		case DLL_PROCESS_DETACH:
+			break;
+	}
+	return TRUE;
+}
+
+PDWORD WINAPI HK_ENTRYPOINT_SYMBOL(UINT sdkVersion) {
 
 	if (!(sdkVersion & 0x80000000)) {
 		return ogEntryPointCall(sdkVersion);
 	}
 
-	int num = lastRand + rand();
-	switch (sdkVersion) {
-		case TRIGGER_SUCCESS: 
-		{
-			int sid = (num % 4);
-			int id = (4 + sid);
-			OggData *data = &AudioState.OggDataB[id];
-			AudioState.Delay = (data->Size * 5) / 1024;
-			tcout << "Playing Success Sound [" << id << "," << AudioState.Delay << "]\n";
-			return (PDWORD)data;
-		}
-		case TRIGGER_FAILURE:
-		{
-			int sid = (num % 4);
-			int id = (8 + sid);
-			OggData *data = &AudioState.OggDataB[id];
-			AudioState.Delay = (data->Size * 6) / 1000;
-			tcout << "Playing Failure Sound [" << id << "," << AudioState.Delay << "]\n";
-			return (PDWORD)data;
-		}
-		case TRIGGER_DIALOG: 
-		{
-			if (AudioState.Delay == 0) {
+	return ProcessTriggers(sdkVersion);
+}
 
-				int sid = (num % 16 < 8) 
-					? 2 + (num % 4)
-					: 0 + (num % 2);
+void Initialize() {
 
-				int id = (6 * GameState.Option) + sid;
-				OggData *data = &AudioState.OggDataA[id];
-				AudioState.Delay = (data->Size * 6) / 1000;
-				tcout << "Playing " << ((sid >= 2) ? "Dialogue" : "Breathing") << " Sound [" << id << "," << AudioState.Delay << "]\n";
-				return (PDWORD)data;
-			}
-			else {
-				--AudioState.Delay;
-				return nullptr;
-			}
-		}
-		default:
-			return nullptr;
+	tcout << VER_PRODUCTNAME_STR << " " << VER_VERSION_STRING << "\n";
+	tcout << "Git Commit Hash: " << GIT_COMMIT_HASH << "\n";
+	tcout << "Git Commit Date: " << GIT_COMMIT_DATE << "\n\n";
+
+	//tcout << "Applying Patches...\n";
+	//ApplyPatches();
+
+	srand(time(nullptr));
+
+	tpkTracker = nullptr;
+
+	tcout << "Initializing Virtual File System...\n";
+	VirtualFileSystem::Initialize();
+
+	//TODO: Find Way to detect which locale is loaded
+
+	AudioState.TpkDataA = new char[4 * 1024 * 1024];
+	AudioState.TpkDataB = new char[4 * 1024 * 1024];
+
+	if (VirtualFileSystem::DataEn) {
+		VirtualFileSystem::DataEn->OnFileRead = &TryLoadAudioTPK;
+		tpkTracker = VirtualFileSystem::DataEn->CreateTracker();
+	}
+	else {
+		tcout << "Couldn't Initialize En Virtual File System!\n";
+	}
+
+	if (VirtualFileSystem::DataJp) {
+		VirtualFileSystem::DataJp->OnFileRead = &TryLoadAudioTPK;
+		//tpkTracker = VirtualFileSystem::DataJp->CreateTracker();
+	}
+	else {
+		tcout << "Couldn't Initialize JP Virtual File System!\n";
+	}
+
+}
+
+void ApplyPatches() {
+	uint8_t *base = (uint8_t*)GetModuleHandle(0);
+	for (int i = 0; i < hPatchCount; ++i) {
+		const uint32_t offset = hPatches[i].Address;
+		const uint32_t size = hPatches[i].Size;
+		const uint8_t* data = hPatches[i].Data;
+		uint8_t* addr = base + offset;
+
+		DWORD accessProtectionValue, accessProtec;
+		int vProtect = VirtualProtect(addr, size, PAGE_EXECUTE_READWRITE, &accessProtectionValue);
+		memcpy(addr, data, size);
+		vProtect = VirtualProtect(addr, size, accessProtectionValue, &accessProtec);
 	}
 }
 
-void DetectTargetTPK(char* fName) {
+void TryLoadAudioTPK(char* fName) {
 	int len = strlen(fName);
 	if (len < 5)
 		return;
@@ -131,8 +150,9 @@ void DetectTargetTPK(char* fName) {
 		return;
 	strcpy_s(lastModel, fName);
 
-	GameState.Option = _DR5(GetModuleHandle(nullptr), 0x1C9554, 0x1C, 0x54C, 0x5E8, 0x1E7C);
-	GameState.MaxTries = _DR2(GetModuleHandle(nullptr), 0x1C9560, 0xF0);
+	HMODULE base = GetModuleHandle(nullptr);
+	GameState.Option = _DR5(base, 0x1C9554, 0x1C, 0x54C, 0x5E8, 0x1E7C);
+	GameState.MaxTries = _DR2(base, 0x1C9560, 0xF0);
 
 	char ibuf[] = "x";
 	strncpy_s(buf, fName, len - 11);
@@ -210,92 +230,6 @@ void DetectTargetTPK(char* fName) {
 		AudioState.OggDataB[i].Data = (uint8_t*)(AudioState.TpkDataB + entries[i].Offset);
 		AudioState.OggDataB[i].Size = entries[i].Size;
 	}
-}
-
-void ApplyPatches() {
-	uint8_t *base = (uint8_t*)GetModuleHandle(0);
-	for (int i = 0; i < hPatchCount; ++i) {
-		const uint32_t offset = hPatches[i].Address;
-		const uint32_t size = hPatches[i].Size;
-		const uint8_t* data = hPatches[i].Data;
-		uint8_t* addr = base + offset;
-
-		DWORD accessProtectionValue, accessProtec;
-		int vProtect = VirtualProtect(addr, size, PAGE_EXECUTE_READWRITE, &accessProtectionValue);
-		memcpy(addr, data, size);
-		vProtect = VirtualProtect(addr, size, accessProtectionValue, &accessProtec);
-	}
-}
-
-void Initialize() {
-
-	tcout << VER_PRODUCTNAME_STR << " " << VER_VERSION_STRING << "\n";
-	tcout << "Git Commit Hash: " << GIT_COMMIT_HASH << "\n";
-	tcout << "Git Commit Date: " << GIT_COMMIT_DATE << "\n\n";
-
-	//tcout << "Applying Patches...\n";
-	//ApplyPatches();
-
-	srand(time(nullptr));
-
-	tpkTracker = nullptr;
-
-	tcout << "Initializing Virtual File System...\n";
-	VirtualFileSystem::Initialize();
-
-	//TODO: Find Way to detect which locale is loaded
-
-	AudioState.TpkDataA = new char[4 * 1024 * 1024];
-	AudioState.TpkDataB = new char[4 * 1024 * 1024];
-
-	if (VirtualFileSystem::DataEn) {
-		VirtualFileSystem::DataEn->OnFileRead = &DetectTargetTPK;
-		tpkTracker = VirtualFileSystem::DataEn->CreateTracker();
-	}
-	else {
-		tcout << "Couldn't Initialize En Virtual File System!\n";
-	}
-
-	if (VirtualFileSystem::DataJp) {
-		VirtualFileSystem::DataJp->OnFileRead = &DetectTargetTPK;
-		//tpkTracker = VirtualFileSystem::DataJp->CreateTracker();
-	}
-	else {
-		tcout << "Couldn't Initialize JP Virtual File System!\n";
-	}
-
-}
-
-extern "C" BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
-{
-	switch (ul_reason_for_call)
-	{
-		case DLL_PROCESS_ATTACH:
-		{
-			AllocConsole();
-			freopen("CONOUT$", "w", stdout);
-
-			TCHAR dllPath[260];
-			const UINT dllPathSz = sizeof(dllPath) / sizeof(_TCHAR);
-			const TCHAR* epModule = HK_ENTRYPOINT_MODULE;
-			const UINT epModuleSz = sizeof(HK_ENTRYPOINT_MODULE) / sizeof(_TCHAR);
-
-			GetSystemDirectory(dllPath, dllPathSz);
-			_tcsncat_s(dllPath, dllPathSz, _TEXT("\\"), 2);
-			_tcsncat_s(dllPath, dllPathSz, epModule, epModuleSz);
-			HMODULE hEntry = LoadLibrary(dllPath);
-
-			ogEntryPointCall = (HK_ENTRYPOINT_DELEGATE)GetProcAddress(hEntry, HK_ENTRYPOINT_SYMBOL_STR);
-
-			Initialize();
-			break;
-		}
-		case DLL_THREAD_ATTACH:
-		case DLL_THREAD_DETACH:
-		case DLL_PROCESS_DETACH:
-			break;
-	}
-	return TRUE;
 }
 
 

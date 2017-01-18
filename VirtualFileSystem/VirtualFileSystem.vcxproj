@@ -73,6 +73,7 @@
     <LinkIncremental>true</LinkIncremental>
     <TargetName>d3d9</TargetName>
     <OutDir>$(SolutionDir)$(Configuration)\Hook\</OutDir>
+    <PostBuildEventUseInBuild>true</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -81,6 +82,7 @@
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d9</TargetName>
     <OutDir>$(SolutionDir)$(Configuration)\Hook\</OutDir>
+    <PostBuildEventUseInBuild>true</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -103,11 +105,15 @@
 git log --pretty=format:"#define GIT_COMMIT_HASH \"%%h\"" -n 1 &gt; dynversion.h
 echo[ &gt;&gt; dynversion.h
 git log --pretty=format:"#define GIT_COMMIT_DATE \"%%25ci\"" -n 1 &gt;&gt; dynversion.h
+echo[ &gt;&gt; dynversion.h
+&lt;nul set /p="#define GIT_COMMIT_COUNT " &gt;&gt; dynversion.h
+git rev-list --count HEAD &gt;&gt; dynversion.h
 echo[ &gt;&gt; dynversion.h</Command>
     </PreBuildEvent>
     <PostBuildEvent>
       <Command>echo #define GIT_COMMIT_HASH "" &gt; dynversion.h
-echo #define GIT_COMMIT_DATE "" &gt;&gt; dynversion.h</Command>
+echo #define GIT_COMMIT_DATE "" &gt;&gt; dynversion.h
+echo #define GIT_COMMIT_COUNT 0 &gt;&gt; dynversion.h</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -146,12 +152,15 @@ echo #define GIT_COMMIT_DATE "" &gt;&gt; dynversion.h</Command>
 git log --pretty=format:"#define GIT_COMMIT_HASH \"%%h\"" -n 1 &gt; dynversion.h
 echo[ &gt;&gt; dynversion.h
 git log --pretty=format:"#define GIT_COMMIT_DATE \"%%25ci\"" -n 1 &gt;&gt; dynversion.h
+echo[ &gt;&gt; dynversion.h
+&lt;nul set /p="#define GIT_COMMIT_COUNT " &gt;&gt; dynversion.h
+git rev-list --count HEAD &gt;&gt; dynversion.h
 echo[ &gt;&gt; dynversion.h</Command>
     </PreBuildEvent>
     <PostBuildEvent>
       <Command>echo #define GIT_COMMIT_HASH "" &gt; dynversion.h
 echo #define GIT_COMMIT_DATE "" &gt;&gt; dynversion.h
-</Command>
+echo #define GIT_COMMIT_COUNT 0 &gt;&gt; dynversion.h</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -182,6 +191,7 @@ echo #define GIT_COMMIT_DATE "" &gt;&gt; dynversion.h
     <ClInclude Include="resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="triggers.h" />
     <ClInclude Include="version.h" />
     <ClInclude Include="VirtualFileSystem.h" />
   </ItemGroup>
@@ -202,6 +212,7 @@ echo #define GIT_COMMIT_DATE "" &gt;&gt; dynversion.h
     </ClCompile>
     <ClCompile Include="RamFS.cpp" />
     <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="triggers.cpp" />
     <ClCompile Include="VirtualFileSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
