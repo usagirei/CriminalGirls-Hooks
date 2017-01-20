@@ -32,6 +32,9 @@ struct AState {
 	char* TpkDataA = nullptr;
 	char* TpkDataB = nullptr;
 
+	char TpkDataAName[64];
+	char TpkDataBName[64];
+
 	uint32_t Delay = 0;
 };
 

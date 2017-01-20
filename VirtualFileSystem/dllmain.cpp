@@ -33,7 +33,6 @@ void TryLoadAudioTPK(char *fname);
 void ApplyPatches();
 void Initialize();
 
-char  lastModel[48];
 RamFS::Tracker* tpkTracker;
 
 BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
@@ -146,10 +145,6 @@ void TryLoadAudioTPK(char* fName) {
 	if (cmp != 0)
 		return;
 
-	if (strcmp(fName, lastModel) == 0)
-		return;
-	strcpy_s(lastModel, fName);
-
 	HMODULE base = GetModuleHandle(nullptr);
 	if (_DR1(base, 0x1C9554))
 	{
@@ -158,10 +153,10 @@ void TryLoadAudioTPK(char* fName) {
 	}
 	else
 	{
+		// Probably Opened Scene Viewer
 		GameState.Option = 0;
 		GameState.MaxTries = -1;
 	}
-
 
 	char ibuf[] = "x";
 	strncpy_s(buf, fName, len - 11);
@@ -180,64 +175,70 @@ void TryLoadAudioTPK(char* fName) {
 
 	GameState.Level = min(GameState.Level, 2);
 
-	// Breathing - Banter TPK
-
-	sprintf_s(buf, "pan_react_%s%02d_%d.tpk", GameState.Girl, GameState.MiniGame, GameState.Level);
-	tcout << "Loading TPK A " << buf << "\n";
-	AudioState.Delay = 180;
+	AudioState.Delay = 180; // Initial Delay
 
 	DWORD tpkRd;
 	uint64_t tpkSz;
-	uint64_t tpkPos = tpkTracker->FileSystem->FindEntryOffset(buf, &tpkSz);
-
-	tpkTracker->Seek(tpkPos, FILE_BEGIN);
-	tpkTracker->Read(AudioState.TpkDataA, tpkSz, &tpkRd);
-
-	uint64_t nFiles = *(uint64_t*)(AudioState.TpkDataA + 0x08);
-	uint64_t nFilesPad = (nFiles + 1) & ~1;
-
+	uint64_t tpkPos;
+	uint64_t nFiles, nFilesPad;
 	struct TPKENTRY {
 		char Name[40];
 		uint32_t Size;
 		uint32_t Offset;
-	};
+	} *entries;
 
-	TPKENTRY* entries = (TPKENTRY*)(AudioState.TpkDataA + 16 + (2 * nFilesPad));
+	// Breathing - Banter TPK
+	sprintf_s(buf, "pan_react_%s%02d_%d.tpk", GameState.Girl, GameState.MiniGame, GameState.Level);
+	if (strcmp(fName, AudioState.TpkDataAName) != 0) {
+		strcpy_s(AudioState.TpkDataAName, fName);
+		tcout << "Loading TPK A " << buf << "\n";
 
-	if (AudioState.OggDataA)
-		delete[] AudioState.OggDataA;
+		tpkPos = tpkTracker->FileSystem->FindEntryOffset(buf, &tpkSz);
+		tpkTracker->Seek(tpkPos, FILE_BEGIN);
+		tpkTracker->Read(AudioState.TpkDataA, tpkSz, &tpkRd);
 
-	AudioState.OggDataA = new OggData[nFiles];
-	AudioState.NumOggFilesA = nFiles;
+		nFiles = *(uint64_t*)(AudioState.TpkDataA + 0x08);
+		nFilesPad = (nFiles + 1) & ~1;
 
-	for (int i = 0; i < nFiles;++i) {
-		AudioState.OggDataA[i].Data = (uint8_t*)(AudioState.TpkDataA + entries[i].Offset);
-		AudioState.OggDataA[i].Size = entries[i].Size;
+		entries = (TPKENTRY*)(AudioState.TpkDataA + 16 + (2 * nFilesPad));
+
+		if (AudioState.OggDataA)
+			delete[] AudioState.OggDataA;
+
+		AudioState.OggDataA = new OggData[nFiles];
+		AudioState.NumOggFilesA = nFiles;
+
+		for (int i = 0; i < nFiles;++i) {
+			AudioState.OggDataA[i].Data = (uint8_t*)(AudioState.TpkDataA + entries[i].Offset);
+			AudioState.OggDataA[i].Size = entries[i].Size;
+		}
 	}
 
 	// Reactions TPK
-
 	sprintf_s(buf, "pan_react_%s_%d.tpk", GameState.Girl, (3 * GameState.Option) + GameState.Level);
-	tcout << "Loading TPK B " << buf << "\n";
+	if (strcmp(fName, AudioState.TpkDataBName) != 0) {
+		strcpy_s(AudioState.TpkDataBName, fName);
+		tcout << "Loading TPK B " << buf << "\n";
 
-	tpkPos = tpkTracker->FileSystem->FindEntryOffset(buf, &tpkSz);
-	tpkTracker->Seek(tpkPos, FILE_BEGIN);
-	tpkTracker->Read(AudioState.TpkDataB, tpkSz, &tpkRd);
+		tpkPos = tpkTracker->FileSystem->FindEntryOffset(buf, &tpkSz);
+		tpkTracker->Seek(tpkPos, FILE_BEGIN);
+		tpkTracker->Read(AudioState.TpkDataB, tpkSz, &tpkRd);
 
-	nFiles = *(uint64_t*)(AudioState.TpkDataB + 0x08);
-	nFilesPad = (nFiles + 1) & ~1;
+		nFiles = *(uint64_t*)(AudioState.TpkDataB + 0x08);
+		nFilesPad = (nFiles + 1) & ~1;
 
-	entries = (TPKENTRY*)(AudioState.TpkDataB + 16 + (2 * nFilesPad));
+		entries = (TPKENTRY*)(AudioState.TpkDataB + 16 + (2 * nFilesPad));
 
-	if (AudioState.OggDataB)
-		delete[] AudioState.OggDataB;
+		if (AudioState.OggDataB)
+			delete[] AudioState.OggDataB;
 
-	AudioState.OggDataB = new OggData[nFiles];
-	AudioState.NumOggFilesB = nFiles;
+		AudioState.OggDataB = new OggData[nFiles];
+		AudioState.NumOggFilesB = nFiles;
 
-	for (int i = 0; i < nFiles;++i) {
-		AudioState.OggDataB[i].Data = (uint8_t*)(AudioState.TpkDataB + entries[i].Offset);
-		AudioState.OggDataB[i].Size = entries[i].Size;
+		for (int i = 0; i < nFiles;++i) {
+			AudioState.OggDataB[i].Data = (uint8_t*)(AudioState.TpkDataB + entries[i].Offset);
+			AudioState.OggDataB[i].Size = entries[i].Size;
+		}
 	}
 }
 

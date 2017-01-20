@@ -188,7 +188,7 @@ RamFS* RamFS::Open(const char* pName) {
 	int error = fopen_s(&inDatFile, datNameBuf, "rb");
 
 	if (error != 0) {
-		tcout << "Failed to Open Dat File: " << datNameBuf;
+		tcout << "Failed to Open Dat File: " << datNameBuf << "\n";
 		return nullptr;
 	}
 
@@ -226,7 +226,15 @@ RamFS* RamFS::Open(const char* pName) {
 			int fileSize = ftell(filePtr);
 			fclose(filePtr);
 
-			tcout << L"Mounting File: " << fileNameBuf << L"\n";
+
+			wchar_t safeBuf[64];
+			wcscpy_s(safeBuf, 64, fileNameBuf);
+			for (int i = 0; i < wcslen(safeBuf); i++)
+			{
+				if (safeBuf[i] < ' ' || safeBuf[i] > '~')
+					safeBuf[i] = '?';
+			};
+			tcout << L"Mounting File: " << safeBuf << L"\n";
 
 			uint32_t fileNameLen = wcslen(fileNameBuf);
 			rEntry->FileName = new wchar_t[fileNameLen + 1];

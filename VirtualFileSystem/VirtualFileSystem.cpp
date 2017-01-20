@@ -58,7 +58,12 @@ HANDLE WINAPI VirtualFileSystem::CreateFileW(LPCWSTR lpFileName, DWORD dwDesired
 {
 	HANDLE hFile;
 	if (DataEn && _wcsicmp(lpFileName, L"data\\data_en.dat") == 0) {
-		hFile = ogCreateFileW(L"data\\data_en.dat", dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+		hFile = ogCreateFileW(L"steam_criminal.exe", dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+		RamFS::Tracker* view = DataEn->CreateTracker();
+		openViews->insert(RamVFS_ViewMap::value_type(hFile, view));
+	}
+	else if (DataEn && _wcsicmp(lpFileName, L"data\\data_jp.dat") == 0) {
+		hFile = ogCreateFileW(L"steam_criminal.exe", dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 		RamFS::Tracker* view = DataEn->CreateTracker();
 		openViews->insert(RamVFS_ViewMap::value_type(hFile, view));
 	}
@@ -75,8 +80,13 @@ HANDLE WINAPI VirtualFileSystem::CreateFileA(LPCSTR lpFileName, DWORD dwDesiredA
 {
 	HANDLE hFile;
 	if (DataEn && _strcmpi(lpFileName, "data\\data_en.dat") == 0) {
-		hFile = ogCreateFileA("data\\data_en.dat", dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+		hFile = ogCreateFileA("steam_criminal.exe", dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 		RamFS::Tracker* view = DataEn->CreateTracker();
+		openViews->insert(RamVFS_ViewMap::value_type(hFile, view));
+	}
+	else if (DataJp && _strcmpi(lpFileName, "data\\data_jp.dat") == 0) {
+		hFile = ogCreateFileA("steam_criminal.exe", dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+		RamFS::Tracker* view = DataJp->CreateTracker();
 		openViews->insert(RamVFS_ViewMap::value_type(hFile, view));
 	}
 	else {
