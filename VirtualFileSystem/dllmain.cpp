@@ -83,14 +83,14 @@ void Initialize() {
 	tcout << "Git Commit Hash: " << GIT_COMMIT_HASH << "\n";
 	tcout << "Git Commit Date: " << GIT_COMMIT_DATE << "\n\n";
 
-	//tcout << "Applying Patches...\n";
-	//ApplyPatches();
+	tcout << "Applying Patches...\n";
+	ApplyPatches();
 
 	srand(time(nullptr));
 
 	tpkTracker = nullptr;
 
-	tcout << "Initializing Virtual File System...\n";
+	tcout << "Initializing Virtual File System...\n\n";
 	VirtualFileSystem::Initialize();
 
 	//TODO: Find Way to detect which locale is loaded
@@ -151,8 +151,17 @@ void TryLoadAudioTPK(char* fName) {
 	strcpy_s(lastModel, fName);
 
 	HMODULE base = GetModuleHandle(nullptr);
-	GameState.Option = _DR5(base, 0x1C9554, 0x1C, 0x54C, 0x5E8, 0x1E7C);
-	GameState.MaxTries = _DR2(base, 0x1C9560, 0xF0);
+	if (_DR1(base, 0x1C9554))
+	{
+		GameState.Option = _DR5(base, 0x1C9554, 0x1C, 0x54C, 0x5E8, 0x1E7C);
+		GameState.MaxTries = _DR2(base, 0x1C9560, 0xF0);
+	}
+	else
+	{
+		GameState.Option = 0;
+		GameState.MaxTries = -1;
+	}
+
 
 	char ibuf[] = "x";
 	strncpy_s(buf, fName, len - 11);

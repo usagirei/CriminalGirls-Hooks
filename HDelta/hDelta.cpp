@@ -117,13 +117,13 @@ int _tmain(int argc, TCHAR **argv)
 		}
 	}
 
-	uint32_t remSize = inputSize - cleanSize;
+	uint32_t remSize = inputSize - cleanSize - 1;
 	unsigned char* remCode = inputCode + cleanSize;
-	for (int i = remSize; i > 0; --i) {
+	for (int i = remSize; i >= 0; --i) {
 		if (remCode[i] != 0) {
-			remSize = i;
 			break;
 		}
+		remSize = i;
 	}
 	if (remSize > 0) {
 		patches->push_back(PATCH_DEF(cleanSize + vAddr, remSize, remCode));
@@ -140,7 +140,7 @@ int _tmain(int argc, TCHAR **argv)
 	TCHAR* cleanName2 = _tcsrchr(cleanName, '\\') + 1;
 	WideCharToMultiByte(CP_ACP, 0, inputName2, -1, inputBuf, 32, nullptr, nullptr);
 	WideCharToMultiByte(CP_ACP, 0, cleanName2, -1, cleanBuf, 32, nullptr, nullptr);
-	
+
 	patch << "/*\n";
 	patch << " * Auto Generated Header File. Do Not Modify.\n";
 	// patch << " * Generated On " << dateBuf << " - " << timeBuf << "\n";

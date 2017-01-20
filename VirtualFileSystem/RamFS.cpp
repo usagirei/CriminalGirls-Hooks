@@ -55,12 +55,14 @@ void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 				bool between = afterStart && beforeEnd;
 				if (between) {
 					if (!callback) {
-
 						if (vfs->OnFileRead)
 							(*vfs->OnFileRead)(bEntry->Name);
 
 						callback = true;
 					}
+
+					if (rEntry->Mounted)
+						tcout << "Open Mounted File: " << bEntry->Name << "\n";
 
 					found = true;
 					const int64_t vOffset = srcOffset - bEntry->Offset;
@@ -71,6 +73,7 @@ void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 					// TODO: Caching Pointers, LRU?
 					FILE* fp;
 					int error = _wfopen_s(&fp, rEntry->FileName, L"rb");
+
 					_fseeki64(fp, fOffset, FILE_BEGIN);
 					int read = fread((uint8_t*)pBuffer + *nBytesRead, 1, toRead, fp);
 					fclose(fp);
@@ -223,11 +226,14 @@ RamFS* RamFS::Open(const char* pName) {
 			int fileSize = ftell(filePtr);
 			fclose(filePtr);
 
+			tcout << L"Mounting File: " << fileNameBuf << L"\n";
+
 			uint32_t fileNameLen = wcslen(fileNameBuf);
 			rEntry->FileName = new wchar_t[fileNameLen + 1];
 			wcscpy_s(rEntry->FileName, fileNameLen + 1, fileNameBuf);
 			rEntry->BaseOffset = 0;
 			rEntry->FileSize = fileSize;
+			rEntry->Mounted = true;
 
 			bEntry->Size = fileSize;
 			bEntry->Offset = vfs->TotalSize;
@@ -240,6 +246,7 @@ RamFS* RamFS::Open(const char* pName) {
 			rEntry->FileName[fileNameLen] = 0;
 			rEntry->BaseOffset = datEntry.Offset;
 			rEntry->FileSize = datEntry.Size;
+			rEntry->Mounted = false;
 
 			bEntry->Size = datEntry.Size;
 			bEntry->Offset = vfs->TotalSize;

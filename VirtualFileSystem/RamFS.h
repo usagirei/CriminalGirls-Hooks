@@ -16,6 +16,7 @@ public:
 
 	class Entry {
 	public:
+		bool Mounted;
 		wchar_t* FileName;
 		uint64_t FileSize;
 		uint64_t BaseOffset;

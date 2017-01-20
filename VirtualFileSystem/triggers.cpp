@@ -14,7 +14,7 @@ PDWORD ProcessTriggers(UINT trigger) {
 			int sid = (num % 4);
 			int id = (4 + sid);
 			OggData *data = &AudioState.OggDataB[id];
-			AudioState.Delay = (data->Size * 5) / 1024;
+			AudioState.Delay = (data->Size * 6) / 1000;
 			tcout << "Playing Success Sound [" << id << "," << AudioState.Delay << "]\n";
 			return (PDWORD)data;
 		}

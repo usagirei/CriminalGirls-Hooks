@@ -3,9 +3,10 @@
 #include <inttypes.h>
 #include "stdafx.h"
 
-#define TRIGGER_SUCCESS 0xFFFFFFFF
-#define TRIGGER_DIALOG 0xFFFFFFFE
-#define TRIGGER_FAILURE 0xFFFFFFFD
+#define TRIGGER_SUCCESS     0xFFFFFFFF
+#define TRIGGER_DIALOG      0xFFFFFFFE
+#define TRIGGER_FAILURE     0xFFFFFFFD
+#define TRIGGER_SMOKE       0xFFFFFFFC
 
 struct OggData {
 	uint8_t* Data;
