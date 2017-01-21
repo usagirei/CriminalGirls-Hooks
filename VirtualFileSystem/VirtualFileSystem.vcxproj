@@ -181,6 +181,7 @@ echo #define GIT_COMMIT_COUNT 0 &gt;&gt; dynversion.h</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="apiDelegates.h" />
+    <ClInclude Include="console.h" />
     <ClInclude Include="dynversion.h" />
     <ClInclude Include="iatHook.h" />
     <ClInclude Include="patch.h" />

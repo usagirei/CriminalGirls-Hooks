@@ -148,3 +148,15 @@ const HPATCH_DATA hPatches[] = {
    { hDelta_15_base, hDelta_15_size, hDelta_15_data },
    { hDelta_16_base, hDelta_16_size, hDelta_16_data }
 };
+
+const unsigned int hPatchChecksum = 0xB087F900;
+uint32_t hPatchCRC32(uint32_t crc, const unsigned char *buf, size_t len)
+{
+    crc = ~crc;
+    while (len--) {
+        crc ^= *buf++;
+        for (int k = 0; k < 8; k++)
+            crc = crc & 1 ? (crc >> 1) ^ 0xedb88320 : crc >> 1;
+    }
+    return ~crc;
+}

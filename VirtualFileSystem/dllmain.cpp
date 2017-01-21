@@ -12,6 +12,7 @@
 #include "patch.h"
 #include "version.h"
 #include "triggers.h"
+#include "console.h"
 
 typedef PDWORD(WINAPI *adDirect3DCreate9)(UINT sdkVersion);
 #define HK_ENTRYPOINT_SYMBOL Direct3DCreate9
@@ -30,7 +31,7 @@ HK_ENTRYPOINT_DELEGATE ogEntryPointCall;
 extern "C" PDWORD WINAPI HK_ENTRYPOINT_SYMBOL(UINT sdkVersion);
 extern "C" BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved);
 void TryLoadAudioTPK(char *fname);
-void ApplyPatches();
+bool ApplyPatches();
 void Initialize();
 
 RamFS::Tracker* tpkTracker;
@@ -82,8 +83,19 @@ void Initialize() {
 	tcout << "Git Commit Hash: " << GIT_COMMIT_HASH << "\n";
 	tcout << "Git Commit Date: " << GIT_COMMIT_DATE << "\n\n";
 
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	con::SetHandle(hConsole);
 	tcout << "Applying Patches...\n";
-	ApplyPatches();
+	if (!ApplyPatches()) {
+		tcout << con::fgCol<con::Red>;
+		tcout << "Invalid File Checksum. Patches not Applied.\n";
+		tcout << "Are you using a modified executable?\n";
+	}
+	else {
+		tcout << con::fgCol<con::Green>;
+		tcout << "Patches Applied\n";
+	}
+	tcout << con::fgCol<con::Gray>;
 
 	srand(time(nullptr));
 
@@ -102,7 +114,9 @@ void Initialize() {
 		tpkTracker = VirtualFileSystem::DataEn->CreateTracker();
 	}
 	else {
+		tcout << con::fgCol<con::Red>;
 		tcout << "Couldn't Initialize En Virtual File System!\n";
+		tcout << con::fgCol<con::Gray>;
 	}
 
 	if (VirtualFileSystem::DataJp) {
@@ -110,13 +124,31 @@ void Initialize() {
 		//tpkTracker = VirtualFileSystem::DataJp->CreateTracker();
 	}
 	else {
+		tcout << con::fgCol<con::Red>;
 		tcout << "Couldn't Initialize JP Virtual File System!\n";
+		tcout << con::fgCol<con::Gray>;
 	}
 
 }
 
-void ApplyPatches() {
-	uint8_t *base = (uint8_t*)GetModuleHandle(0);
+bool ApplyPatches() {
+	HMODULE module = GetModuleHandle(0);
+	TCHAR filePath[260];
+	GetModuleFileName(module, filePath, 260);
+
+	FILE* file = _tfopen(filePath, _TEXT("rb"));
+	uint32_t crc32 = 0;
+	unsigned char *crcBuf = new  unsigned char[4096];
+	while (!feof(file)) {
+		int read = fread(crcBuf, 1, 4096, file);
+		crc32 = hPatchCRC32(crc32, crcBuf, read);
+	}
+	delete[] crcBuf;
+
+	if (crc32 != hPatchChecksum)
+		return false;
+
+	uint8_t *base = (uint8_t*)module;
 	for (int i = 0; i < hPatchCount; ++i) {
 		const uint32_t offset = hPatches[i].Address;
 		const uint32_t size = hPatches[i].Size;
@@ -128,6 +160,7 @@ void ApplyPatches() {
 		memcpy(addr, data, size);
 		vProtect = VirtualProtect(addr, size, accessProtectionValue, &accessProtec);
 	}
+	return true;
 }
 
 void TryLoadAudioTPK(char* fName) {

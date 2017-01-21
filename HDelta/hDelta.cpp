@@ -25,7 +25,9 @@ struct PATCH_DEF {
 	}
 };
 
-unsigned char* LoadSection(TCHAR* exeName, char* secName, uint32_t *codeSize, uint32_t *vAddr) {
+uint32_t crc32(uint32_t crc, const unsigned char *buf, size_t len);
+
+unsigned char* LoadSection(TCHAR* exeName, char* secName, uint32_t *codeSize, uint32_t *vAddr, uint32_t *pAddr) {
 	IMAGE_DOS_HEADER dosHeader;
 	IMAGE_NT_HEADERS ntHeaders;
 	IMAGE_SECTION_HEADER section;
@@ -41,6 +43,7 @@ unsigned char* LoadSection(TCHAR* exeName, char* secName, uint32_t *codeSize, ui
 		if (_strcmpi((char*)section.Name, secName) == 0) {
 			*codeSize = section.SizeOfRawData;
 			*vAddr = section.VirtualAddress;
+			*pAddr = section.PointerToRawData;
 
 			unsigned char* code = new unsigned char[section.SizeOfRawData];
 			exeStream.seekg(section.PointerToRawData, std::ios::beg);
@@ -51,16 +54,15 @@ unsigned char* LoadSection(TCHAR* exeName, char* secName, uint32_t *codeSize, ui
 	return nullptr;
 }
 
-
 int _tmain(int argc, TCHAR **argv)
 {
 	TCHAR *inputName = argv[1];
 	TCHAR *cleanName = argv[2];
 	TCHAR *patchName = argv[3];
 
-	uint32_t cleanSize, inputSize, vAddr;
-	unsigned char* inputCode = LoadSection(inputName, ".text", &inputSize, &vAddr);
-	unsigned char* cleanCode = LoadSection(cleanName, ".text", &cleanSize, &vAddr);
+	uint32_t cleanSize, inputSize, vAddr, pAddr;
+	unsigned char* inputCode = LoadSection(inputName, ".text", &inputSize, &vAddr, &pAddr);
+	unsigned char* cleanCode = LoadSection(cleanName, ".text", &cleanSize, &vAddr, &pAddr);
 
 	std::ofstream patch(patchName);
 
@@ -129,6 +131,17 @@ int _tmain(int argc, TCHAR **argv)
 		patches->push_back(PATCH_DEF(cleanSize + vAddr, remSize, remCode));
 	}
 
+	std::ifstream clean(cleanName, std::ios::binary);
+	char *crcBuf = new char[4096];
+	uint32_t cleanCrc = 0;
+	while (!clean.eof()) {
+		clean.read(crcBuf, 4096);
+		int read = clean.gcount();
+		cleanCrc = crc32(cleanCrc, (unsigned char*)crcBuf, read);
+	}
+	clean.close();
+	delete[] crcBuf;
+
 	char *inputBuf = new  char[32];
 	char *cleanBuf = new  char[32];
 	char *timeBuf = new  char[32];
@@ -181,6 +194,7 @@ int _tmain(int argc, TCHAR **argv)
 		patch << "\n};\n\n";
 	}
 
+
 	patch << "const unsigned int hPatchCount = " << DEC(patches->size()) << ";\n";
 	patch << "const HPATCH_DATA hPatches[] = {\n";
 	for (unsigned int i = 0; i < patches->size(); ++i) {
@@ -190,7 +204,19 @@ int _tmain(int argc, TCHAR **argv)
 		else
 			patch << ",\n";
 	}
-	patch << "};\n";
+	patch << "};\n\n";
+
+	patch << "const unsigned int hPatchChecksum = " << HEX8(cleanCrc) << ";\n";
+	patch << "uint32_t hPatchCRC32(uint32_t crc, const unsigned char *buf, size_t len)" << "\n";
+	patch << "{" << "\n";
+	patch << "    crc = ~crc;" << "\n";
+	patch << "    while (len--) {" << "\n";
+	patch << "        crc ^= *buf++;" << "\n";
+	patch << "        for (int k = 0; k < 8; k++)" << "\n";
+	patch << "            crc = crc & 1 ? (crc >> 1) ^ 0xedb88320 : crc >> 1;" << "\n";
+	patch << "    }" << "\n";
+	patch << "    return ~crc;" << "\n";
+	patch << "}" << "\n";
 
 	delete cleanCode;
 	delete inputCode;
@@ -202,3 +228,13 @@ int _tmain(int argc, TCHAR **argv)
 	delete patches;
 };
 
+uint32_t crc32(uint32_t crc, const unsigned char *buf, size_t len)
+{
+	crc = ~crc;
+	while (len--) {
+		crc ^= *buf++;
+		for (int k = 0; k < 8; k++)
+			crc = crc & 1 ? (crc >> 1) ^ 0xedb88320 : crc >> 1;
+	}
+	return ~crc;
+}
