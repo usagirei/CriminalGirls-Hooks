@@ -62,9 +62,9 @@ HANDLE WINAPI VirtualFileSystem::CreateFileW(LPCWSTR lpFileName, DWORD dwDesired
 		RamFS::Tracker* view = DataEn->CreateTracker();
 		openViews->insert(RamVFS_ViewMap::value_type(hFile, view));
 	}
-	else if (DataEn && _wcsicmp(lpFileName, L"data\\data_jp.dat") == 0) {
+	else if (DataJp && _wcsicmp(lpFileName, L"data\\data_jp.dat") == 0) {
 		hFile = ogCreateFileW(L"steam_criminal.exe", dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-		RamFS::Tracker* view = DataEn->CreateTracker();
+		RamFS::Tracker* view = DataJp->CreateTracker();
 		openViews->insert(RamVFS_ViewMap::value_type(hFile, view));
 	}
 	else {
