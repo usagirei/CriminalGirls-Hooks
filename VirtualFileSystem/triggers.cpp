@@ -64,7 +64,7 @@ PDWORD ProcessTriggers(UINT trigger) {
 			return nullptr;
 		}
 		case TRIGGER_SMOKEVISIBLE: {
-			return (PDWORD) ModState.SmokeVisible;
+			return (PDWORD)ModState.SmokeVisible;
 		}
 		default:
 			return nullptr;
@@ -78,8 +78,10 @@ void GameLoop() {
 
 void FirstFrameSetup() {
 	// Keyboard Hook
+#ifndef _DEBUG
 	if (!(hHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHook, NULL, 0)))
 		tcout << "Failed to Hook Keyboard. Hotkeys will not function.";
+#endif // !DEBUG
 
 	// Enable Blindfold/EyeMask
 	_DR1(GetModuleHandle(0), 0x1C96E4) = 1;
@@ -144,9 +146,14 @@ PDWORD FetchFailureAudio() {
 
 PDWORD FetchBreathingAudio() {
 	int num = rand();
-	int sid = (num % 16 < 8)
-		? 2 + (num % 4)
-		: 0 + (num % 2);
+	// Offset = 6 * Option (None,Gag,Blindfold) 
+	// 2x Breathing
+	// 4x Dialogue Pre
+	bool breathe = num % 16 < 12;
+	int sid = breathe
+		? 0 + num % 2
+		: 2 + num % 4;
+
 	int id = (6 * GameState.Option) + sid;
 
 	OggData *data = &AudioState.OggDataA[id];

@@ -55,9 +55,11 @@ void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 				bool between = afterStart && beforeEnd;
 				if (between) {
 					if (!callback) {
-						if (vfs->OnFileRead)
-							(*vfs->OnFileRead)(bEntry->Name);
-
+						if (vfs->OnFileRead) {
+							for (int i = 0; i < vfs->OnFileRead->size(); i++) {
+								(*vfs->OnFileRead->at(i))(bEntry->Name);
+							}
+						}
 						callback = true;
 					}
 
@@ -197,7 +199,7 @@ RamFS* RamFS::Open(const char* pName) {
 	fread(&nFiles, 1, 8, inDatFile);
 
 	RamFS* vfs = new RamFS();
-	vfs->OnFileRead = nullptr;
+	//vfs->OnFileRead = nullptr;
 	vfs->NumEntries = nFiles;
 	vfs->Entries = new RamFS::Entry[nFiles];
 	vfs->BinaryHeader = PS3FS_HEADER::Prealloc(nFiles, &(vfs->BinaryHeaderSize));

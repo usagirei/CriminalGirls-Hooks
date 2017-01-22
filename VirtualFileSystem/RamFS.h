@@ -1,6 +1,7 @@
 #pragma once
 #include "PS3FS.h"
 #include "stdafx.h"
+#include <vector>
 
 
 class RamFS {
@@ -25,8 +26,15 @@ public:
 
 	typedef void (*FileReadCallback)(char* fileName);
 
-	// TODO: Proper Invocation List
-	FileReadCallback OnFileRead;
+	RamFS() {
+		OnFileRead = new std::vector<FileReadCallback>();
+	}
+
+	~RamFS() {
+		delete OnFileRead;
+	}
+
+	std::vector<FileReadCallback> *OnFileRead;
 
 	Entry* Entries;
 	uint64_t NumEntries;

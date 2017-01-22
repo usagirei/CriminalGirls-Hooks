@@ -26,6 +26,8 @@ extern "C" PDWORD WINAPI HK_ENTRYPOINT_SYMBOL(UINT sdkVersion);
 extern "C" BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved);
 
 void TryLoadAudioTPK(char *fname);
+void UpdateKnightState(char *fname);
+
 bool ApplyPatches();
 void Initialize();
 void Deinitialize();
@@ -114,7 +116,8 @@ void Initialize() {
 	AudioState.TpkDataB = new char[4 * 1024 * 1024];
 
 	if (VirtualFileSystem::DataEn) {
-		VirtualFileSystem::DataEn->OnFileRead = &TryLoadAudioTPK;
+		VirtualFileSystem::DataEn->OnFileRead->push_back(&TryLoadAudioTPK);
+		VirtualFileSystem::DataEn->OnFileRead->push_back(&UpdateKnightState);
 		tpkTracker = VirtualFileSystem::DataEn->CreateTracker();
 	}
 	else {
@@ -124,7 +127,8 @@ void Initialize() {
 	}
 
 	if (VirtualFileSystem::DataJp) {
-		VirtualFileSystem::DataJp->OnFileRead = &TryLoadAudioTPK;
+		VirtualFileSystem::DataJp->OnFileRead->push_back(&TryLoadAudioTPK);
+		VirtualFileSystem::DataJp->OnFileRead->push_back(&UpdateKnightState);
 		//tpkTracker = VirtualFileSystem::DataJp->CreateTracker();
 	}
 	else {
@@ -210,7 +214,7 @@ void TryLoadAudioTPK(char* fName) {
 	if (GameState.MiniGame == 4)
 		GameState.Level = 0;
 
-	GameState.Level = min(GameState.Level, 2);
+	//GameState.Level = min(GameState.Level, 2);
 
 	AudioState.Delay = 180; // Initial Delay
 
@@ -224,8 +228,23 @@ void TryLoadAudioTPK(char* fName) {
 		uint32_t Offset;
 	} *entries;
 
+	bool knighted = false;
+	for (int i = 0; i < 9; i++)
+	{
+		if (stricmp(GameState.Girl, GameState.KnightStatus[i].Girl)) {
+			knighted = GameState.KnightStatus[i].Status;
+			break;
+		}
+	}
+
+	int audioSet = knighted 
+		? 2 
+		: (GameState.Level >= 2 
+			? 1 
+			: 0);
+
 	// Breathing - Banter TPK
-	sprintf_s(buf, "pan_react_%s%02d_%d.tpk", GameState.Girl, GameState.MiniGame, GameState.Level);
+	sprintf_s(buf, "pan_react_%s%02d_%d.tpk", GameState.Girl, GameState.MiniGame, audioSet);
 	if (strcmp(fName, AudioState.TpkDataAName) != 0) {
 		strcpy_s(AudioState.TpkDataAName, fName);
 		tcout << "Loading TPK A " << buf << "\n";
@@ -252,7 +271,7 @@ void TryLoadAudioTPK(char* fName) {
 	}
 
 	// Reactions TPK
-	sprintf_s(buf, "pan_react_%s_%d.tpk", GameState.Girl, (3 * GameState.Option) + GameState.Level);
+	sprintf_s(buf, "pan_react_%s_%d.tpk", GameState.Girl, (3 * GameState.Option) + audioSet);
 	if (strcmp(fName, AudioState.TpkDataBName) != 0) {
 		strcpy_s(AudioState.TpkDataBName, fName);
 		tcout << "Loading TPK B " << buf << "\n";
@@ -275,6 +294,31 @@ void TryLoadAudioTPK(char* fName) {
 		for (int i = 0; i < nFiles;++i) {
 			AudioState.OggDataB[i].Data = (uint8_t*)(AudioState.TpkDataB + entries[i].Offset);
 			AudioState.OggDataB[i].Size = entries[i].Size;
+		}
+	}
+}
+
+void UpdateKnightState(char* fName) {
+	if (strnicmp(fName, "if_camp_", 8) != 0)
+		return;
+	if (strnicmp(fName, "if_camp_res", 11) == 0)
+		return;
+
+	char girlName[4];
+	char atoiBuf[] = "x";
+
+	strncpy_s(girlName, fName + 8, 3);
+	strncpy_s(atoiBuf, fName + 12, 1);
+	bool knighted = atoi(atoiBuf) > 0;
+
+	for (int i = 0; i < 9; i++) {
+		auto *entry = &GameState.KnightStatus[i];
+		bool empty = entry->Girl[0] == 0;
+		if (empty || (stricmp(entry->Girl, girlName) == 0)) {
+			if (empty)
+				strcpy_s(entry->Girl, girlName);
+			entry->Status = knighted;
+			break;
 		}
 	}
 }

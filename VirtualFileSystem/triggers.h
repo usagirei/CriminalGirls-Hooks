@@ -20,7 +20,11 @@ struct GState{
 	uint8_t Tries;
 	uint8_t MiniGame;
 	uint8_t Level;
-	char Girl[4];
+	char Girl[4] = { 0 };
+	struct {
+		char Girl[4] = { 0 };
+		bool Status;
+	} KnightStatus[9];
 };
 
 struct MState {
