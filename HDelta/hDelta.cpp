@@ -128,7 +128,9 @@ int _tmain(int argc, TCHAR **argv)
 		remSize = i;
 	}
 	if (remSize > 0) {
-		patches->push_back(PATCH_DEF(cleanSize + vAddr, remSize, remCode));
+		unsigned char *lastCode = new unsigned char[remSize];
+		memcpy_s(lastCode, remSize, remCode, remSize);
+		patches->push_back(PATCH_DEF(cleanSize + vAddr, remSize, lastCode));
 	}
 
 	std::ifstream clean(cleanName, std::ios::binary);

@@ -22,17 +22,13 @@ typedef PDWORD(WINAPI *adDirect3DCreate9)(UINT sdkVersion);
 #define HK_ENTRYPOINT_SYMBOL_STR TOSTRING(HK_ENTRYPOINT_SYMBOL)
 HK_ENTRYPOINT_DELEGATE ogEntryPointCall;
 
-#define _DR1(base,offset) *(uint32_t*)((uint8_t*)base + offset)
-#define _DR2(b, o1, o2) _DR1(_DR1(b,o1),o2)
-#define _DR3(b, o1, o2, o3) _DR1(_DR2(b,o1,o2),o3)
-#define _DR4(b, o1, o2, o3, o4) _DR1(_DR3(b,o1,o2,o3),o4)
-#define _DR5(b, o1, o2, o3, o4, o5) _DR1(_DR4(b,o1,o2,o3,o4),o5)
-
 extern "C" PDWORD WINAPI HK_ENTRYPOINT_SYMBOL(UINT sdkVersion);
 extern "C" BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved);
+
 void TryLoadAudioTPK(char *fname);
 bool ApplyPatches();
 void Initialize();
+void Deinitialize();
 
 RamFS::Tracker* tpkTracker;
 
@@ -60,9 +56,13 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserve
 			Initialize();
 			break;
 		}
+		case DLL_PROCESS_DETACH:
+		{
+			Deinitialize();
+			break;
+		}
 		case DLL_THREAD_ATTACH:
 		case DLL_THREAD_DETACH:
-		case DLL_PROCESS_DETACH:
 			break;
 	}
 	return TRUE;
@@ -75,6 +75,10 @@ PDWORD WINAPI HK_ENTRYPOINT_SYMBOL(UINT sdkVersion) {
 	}
 
 	return ProcessTriggers(sdkVersion);
+}
+
+void Deinitialize() {
+	
 }
 
 void Initialize() {

@@ -183,6 +183,7 @@ echo #define GIT_COMMIT_COUNT 0 &gt;&gt; dynversion.h</Command>
     <ClInclude Include="apiDelegates.h" />
     <ClInclude Include="console.h" />
     <ClInclude Include="dynversion.h" />
+    <ClInclude Include="hotkeys.h" />
     <ClInclude Include="iatHook.h" />
     <ClInclude Include="patch.h" />
     <ClInclude Include="PS3FS.h" />
@@ -193,6 +194,7 @@ echo #define GIT_COMMIT_COUNT 0 &gt;&gt; dynversion.h</Command>
     <ClInclude Include="triggers.h" />
     <ClInclude Include="version.h" />
     <ClInclude Include="VirtualFileSystem.h" />
+    <ClInclude Include="vk.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
