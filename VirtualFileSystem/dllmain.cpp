@@ -231,7 +231,7 @@ void TryLoadAudioTPK(char* fName) {
 	bool knighted = false;
 	for (int i = 0; i < 9; i++)
 	{
-		if (stricmp(GameState.Girl, GameState.KnightStatus[i].Girl)) {
+		if (stricmp(GameState.Girl, GameState.KnightStatus[i].Girl) == 0) {
 			knighted = GameState.KnightStatus[i].Status;
 			break;
 		}
