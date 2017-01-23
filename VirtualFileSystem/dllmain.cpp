@@ -244,7 +244,7 @@ void TryLoadAudioTPK(char* fName) {
 			: 0);
 
 	// Breathing - Banter TPK
-	sprintf_s(buf, "pan_react_%s%02d_%d.tpk", GameState.Girl, GameState.MiniGame, audioSet);
+	sprintf_s(buf, "pan_react_%s%02d_%d.tpk", GameState.Girl, GameState.MiniGame, (GameState.MiniGame == 4 ? 0 : audioSet));
 	if (strcmp(fName, AudioState.TpkDataAName) != 0) {
 		strcpy_s(AudioState.TpkDataAName, fName);
 		tcout << "Loading TPK A " << buf << "\n";
