@@ -118,6 +118,10 @@ RamFS::Tracker *RamFS::CreateTracker()
 
 RamFS::Entry * RamFS::FindEntry(const std::string &rName)
 {
+	const int maxLen = sizeof(PS3FS_HEADER_ENTRY::Name) / sizeof(char);
+	if (rName.length() > maxLen)
+		return nullptr;
+
 	int hash = RamFS::Entry::HashFunc(rName);
 	auto found = std::find_if(this->Entries.begin(), this->Entries.end(), [hash](const RamFS::Entry *e) {
 		return e->Hash == hash;
@@ -128,6 +132,11 @@ RamFS::Entry * RamFS::FindEntry(const std::string &rName)
 }
 
 RamFS::Entry* RamFS::CreateEntry(const std::string &rName) {
+
+	const int maxLen = sizeof(PS3FS_HEADER_ENTRY::Name) / sizeof(char);
+	if (rName.length() > maxLen)
+		return nullptr;
+
 	RamFS::Entry *rEntry = FindEntry(rName);
 	if (!rEntry) {
 		rEntry = new RamFS::Entry(rName);
@@ -157,7 +166,12 @@ void RamFS::MountDat(const std::string &pName) {
 		PS3FS_HEADER_ENTRY datEntry;
 		fread(&datEntry, 1, sizeof(PS3FS_HEADER_ENTRY), inDatFile);
 
-		RamFS::Entry *rEntry = this->CreateEntry(datEntry.Name);
+		std::string entryName = datEntry.Name;
+		RamFS::Entry *rEntry = this->CreateEntry(entryName);
+		if (!rEntry) {
+			std::cout << "Failed to Create Entry: " << entryName;
+			continue;
+		}
 
 		rEntry->SourceName = StringToWideString(pName);
 
@@ -178,7 +192,7 @@ void RamFS::MountDir(const std::string &dirName)
 		return;
 
 	std::cout << "Mounting Directory: " << dirName << "\n";
-
+	
 	do {
 		std::string fileName = dirName + data.cFileName;
 		std::ifstream stream(fileName);
@@ -186,7 +200,12 @@ void RamFS::MountDir(const std::string &dirName)
 			stream.seekg(0, std::ios::end);
 			int fSz = stream.tellg();
 
-			RamFS::Entry *rEntry = this->CreateEntry(data.cFileName);
+			std::string entryName = data.cFileName;
+			RamFS::Entry *rEntry = this->CreateEntry(entryName);
+			if (!rEntry) {
+				std::cout << "Failed to Create Entry: " << entryName;
+				continue;
+			}
 
 			rEntry->SourceName = StringToWideString(fileName);
 			rEntry->SourceOffset = 0;
@@ -258,12 +277,11 @@ void RamFS::MountZip(const std::string & zipFileName)
 		std::string entryName = fileRecord.FileName;
 		entryName = entryName.substr(entryName.rfind('/')+1);
 
-		if (entryName.length() > 48) {
-			std::cout << "File Name Too Long: " << entryName;
+		RamFS::Entry* rEntry = this->CreateEntry(entryName);
+		if (!rEntry) {
+			std::cout << "Failed to Create Entry: " << entryName;
 			continue;
 		}
-
-		RamFS::Entry* rEntry = this->CreateEntry(entryName);
 
 		rEntry->SourceName = StringToWideString(zipFileName);
 		rEntry->SourceOffset = ftell(zipFile) - fileRecord.CompressedSize;
