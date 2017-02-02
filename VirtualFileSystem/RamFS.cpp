@@ -2,25 +2,20 @@
 #include "stdafx.h"
 
 #include <iostream>
+#include <algorithm>
+#include <fstream>
+#include <codecvt>
 
-
-void RamFS::Close(RamFS * pFileSystem)
+std::wstring StringToWideString(const std::string& str, int codePage = CP_ACP)
 {
-	if (!pFileSystem)
-		return;
-
-	for (int i = 0; i < pFileSystem->NumEntries; i++) {
-		if (pFileSystem->Entries[i].FileName)
-			delete pFileSystem->Entries[i].FileName;
-	}
-
-	if (pFileSystem->BinaryHeader)
-		pFileSystem->BinaryHeader->Dealloc();
-
-	if (pFileSystem->Entries)
-		delete pFileSystem->Entries;
-	delete pFileSystem;
+	int cstrl = str.length() + 1;
+	auto temp = new wchar_t[cstrl];
+	MultiByteToWideChar(codePage, 0, str.c_str(), -1, temp, cstrl);
+	auto wstr = std::wstring(temp);
+	delete[] temp;
+	return wstr;
 }
+
 
 void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 {
@@ -46,8 +41,8 @@ void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 		}
 		else {
 			bool found = false;
-			for (int i = 0; i < vfs->NumEntries; i++) {
-				RamFS::Entry* rEntry = &vfs->Entries[i];
+			for (int i = 0; i < vfs->Entries.size(); i++) {
+				RamFS::Entry* rEntry = vfs->Entries.at(i);
 				PS3FS_HEADER_ENTRY* bEntry = rEntry->BinaryEntry;
 				uint64_t srcOffset = this->Position;
 				bool afterStart = srcOffset >= bEntry->Offset;
@@ -55,10 +50,8 @@ void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 				bool between = afterStart && beforeEnd;
 				if (between) {
 					if (!callback) {
-						if (vfs->OnFileRead) {
-							for (int i = 0; i < vfs->OnFileRead->size(); i++) {
-								(*vfs->OnFileRead->at(i))(bEntry->Name);
-							}
+						for (int i = 0; i < vfs->OnFileRead.size(); i++) {
+							(*vfs->OnFileRead.at(i))(bEntry->Name);
 						}
 						callback = true;
 					}
@@ -68,13 +61,13 @@ void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 
 					found = true;
 					const int64_t vOffset = srcOffset - bEntry->Offset;
-					const int64_t fOffset = rEntry->BaseOffset + vOffset;
+					const int64_t fOffset = rEntry->SourceOffset + vOffset;
 					const int64_t srcRemainder = rEntry->FileSize - vOffset;
 					const int32_t toRead = min(srcRemainder, nBytesToRead);
 
 					// TODO: Caching Pointers, LRU?
 					FILE* fp;
-					int error = _wfopen_s(&fp, rEntry->FileName, L"rb");
+					int error = _wfopen_s(&fp, rEntry->SourceName.c_str(), L"rb");
 
 					_fseeki64(fp, fOffset, FILE_BEGIN);
 					int read = fread((uint8_t*)pBuffer + *nBytesRead, 1, toRead, fp);
@@ -114,19 +107,6 @@ uint64_t RamFS::Tracker::Seek(DWORD nOffset, DWORD eMoveMethod)
 	return this->Position;
 }
 
-uint64_t RamFS::FindEntryOffset(char * pFileName, uint64_t* pDataSize)
-{
-	for (int i = 0; i < this->NumEntries; ++i) {
-		PS3FS_HEADER_ENTRY* entry = this->Entries[i].BinaryEntry;
-		if (_stricmp(entry->Name, pFileName) == 0) {
-			if (pDataSize)
-				*pDataSize = entry->Size;
-			return entry->Offset;
-		}
-	}
-	return 0;
-}
-
 RamFS::Tracker *RamFS::CreateTracker()
 {
 	RamFS::Tracker* tracker = new RamFS::Tracker();
@@ -135,135 +115,108 @@ RamFS::Tracker *RamFS::CreateTracker()
 	return tracker;
 }
 
-void RamFS::LstGen(const char* pName) {
-	char datNameBuf[64];
-	char lstNameBuf[64];
-
-	strcpy_s(datNameBuf, "data/");
-	strcat_s(datNameBuf, pName);
-	strcpy_s(lstNameBuf, datNameBuf);
-	strcat_s(datNameBuf, ".dat");
-	strcat_s(lstNameBuf, ".lst");
-
-	FILE* inDataLstEn;
-	int error;
-	error = fopen_s(&inDataLstEn, lstNameBuf, "rb");
-	// Skip if LST Already Exists
-	if (error != 0) {
-		PS3FS_HEADER header;
-		FILE *inDataEn, *outDataLstEn;
-		error = fopen_s(&inDataEn, datNameBuf, "rb");
-		// Skip if DAT Doesn't Exist
-		if (error == 0) {
-			error = fopen_s(&outDataLstEn, lstNameBuf, "wb");
-
-			fread(&header.Magic, sizeof(char), 8, inDataEn);
-			fread(&header.NumEntries, sizeof(uint64_t), 1, inDataEn);
-
-			for (int i = 0; i < header.NumEntries; i++) {
-				fread(&header.Entries, sizeof(PS3FS_HEADER_ENTRY), 1, inDataEn);
-				fwrite(header.Entries[0].Name, sizeof(char), strlen(header.Entries[0].Name), outDataLstEn);
-				fwrite("\n", sizeof(char), 1, outDataLstEn);
-			}
-			fclose(outDataLstEn);
-			fclose(inDataEn);
-		}
-	}
-	else {
-		fclose(inDataLstEn);
-	}
+RamFS::Entry * RamFS::FindEntry(const std::string &rName)
+{
+	auto found = std::find_if(this->Entries.begin(), this->Entries.end(), [rName](const RamFS::Entry *e) {
+		return e->FileName == rName;
+	});
+	if (found == this->Entries.end())
+		return nullptr;
+	return *found;
 }
 
-RamFS* RamFS::Open(const char* pName) {
-	wchar_t entryNameBuf[48];
-	char datNameBuf[64];
-	wchar_t dirNameBuf[64];
-	wchar_t fileNameBuf[128];
+RamFS::Entry* RamFS::CreateEntry(const std::string &rName) {
+	RamFS::Entry *rEntry = FindEntry(rName);
+	if (!rEntry) {
+		rEntry = new RamFS::Entry();
+		rEntry->FileName = rName;
 
-	strcpy_s(datNameBuf, "data/");
-	strcat_s(datNameBuf, pName);
-	MultiByteToWideChar(CP_ACP, 0, datNameBuf, -1, dirNameBuf, 64);
-	strcat_s(datNameBuf, ".dat");
-	wcscat_s(dirNameBuf, L"/");
+		std::transform(rEntry->FileName.begin(), rEntry->FileName.end(), rEntry->FileName.begin(), tolower);
+
+		this->Entries.push_back(rEntry);
+	}
+	return rEntry;
+}
+
+void RamFS::MountDat(const std::string &pName) {
+	wchar_t entryNameBuf[48];
 
 	FILE* inDatFile;
-	int error = fopen_s(&inDatFile, datNameBuf, "rb");
+	int error = fopen_s(&inDatFile, pName.c_str(), "rb");
 
 	if (error != 0) {
-		tcout << "Failed to Open Dat File: " << datNameBuf << "\n";
-		return nullptr;
+		std::cout << "Failed to Open Dat File: " << pName << "\n";
+		return;
 	}
 
 	uint64_t nFiles = 0;
 	fseek(inDatFile, 8, FILE_BEGIN);
 	fread(&nFiles, 1, 8, inDatFile);
 
-	RamFS* vfs = new RamFS();
-	//vfs->OnFileRead = nullptr;
-	vfs->NumEntries = nFiles;
-	vfs->Entries = new RamFS::Entry[nFiles];
-	vfs->BinaryHeader = PS3FS_HEADER::Prealloc(nFiles, &(vfs->BinaryHeaderSize));
-	vfs->TotalSize = vfs->BinaryHeaderSize;
-
 	for (int i = 0; i < nFiles; ++i) {
-		PS3FS_HEADER_ENTRY* bEntry = &(vfs->BinaryHeader->Entries[i]);
-		RamFS::Entry* rEntry = &(vfs->Entries[i]);
-
-		rEntry->BinaryEntry = bEntry;
-
 		PS3FS_HEADER_ENTRY datEntry;
 		fread(&datEntry, 1, sizeof(PS3FS_HEADER_ENTRY), inDatFile);
 
-		strcpy(bEntry->Name, datEntry.Name);
+		RamFS::Entry *rEntry = this->CreateEntry(datEntry.Name);
 
-		MultiByteToWideChar(932, MB_PRECOMPOSED, bEntry->Name, -1, entryNameBuf, 48);
+		rEntry->SourceName = StringToWideString(pName);
 
-		wcscpy_s(fileNameBuf, dirNameBuf);
-		wcscat_s(fileNameBuf, entryNameBuf);
-
-		FILE* filePtr;
-		int error = _wfopen_s(&filePtr, fileNameBuf, L"rb");
-		if (!error) {
-			fseek(filePtr, 0, FILE_END);
-			int fileSize = ftell(filePtr);
-			fclose(filePtr);
-
-
-			wchar_t safeBuf[64];
-			wcscpy_s(safeBuf, 64, fileNameBuf);
-			for (int i = 0; i < wcslen(safeBuf); i++)
-			{
-				if (safeBuf[i] < ' ' || safeBuf[i] > '~')
-					safeBuf[i] = '?';
-			};
-			tcout << L"Mounting File: " << safeBuf << L"\n";
-
-			uint32_t fileNameLen = wcslen(fileNameBuf);
-			rEntry->FileName = new wchar_t[fileNameLen + 1];
-			wcscpy_s(rEntry->FileName, fileNameLen + 1, fileNameBuf);
-			rEntry->BaseOffset = 0;
-			rEntry->FileSize = fileSize;
-			rEntry->Mounted = true;
-
-			bEntry->Size = fileSize;
-			bEntry->Offset = vfs->TotalSize;
-			vfs->TotalSize += fileSize;
-		}
-		else {
-			uint32_t fileNameLen = strlen(datNameBuf);
-			rEntry->FileName = new wchar_t[fileNameLen + 1];
-			MultiByteToWideChar(CP_ACP, 0, datNameBuf, -1, rEntry->FileName, fileNameLen);
-			rEntry->FileName[fileNameLen] = 0;
-			rEntry->BaseOffset = datEntry.Offset;
-			rEntry->FileSize = datEntry.Size;
-			rEntry->Mounted = false;
-
-			bEntry->Size = datEntry.Size;
-			bEntry->Offset = vfs->TotalSize;
-			vfs->TotalSize += datEntry.Size;
-		}
+		rEntry->SourceOffset = datEntry.Offset;
+		rEntry->FileSize = datEntry.Size;
+		rEntry->Mounted = false;
 	}
-	fclose(inDatFile);
 
-	return vfs;
+	fclose(inDatFile);
+}
+
+void RamFS::MountDir(const std::string &dirName)
+{
+	WIN32_FIND_DATAA data;
+	HANDLE hFind;
+	hFind = FindFirstFileA((dirName + "*").c_str(), &data);
+	if (hFind == INVALID_HANDLE_VALUE)
+		return;
+
+	do {
+		std::string fileName = dirName + data.cFileName;
+		std::ifstream stream(fileName);
+		if (stream.good()) {
+			stream.seekg(0, std::ios::end);
+			int fSz = stream.tellg();
+
+			RamFS::Entry *rEntry = this->CreateEntry(data.cFileName);
+
+			rEntry->SourceName = StringToWideString(fileName);
+
+			rEntry->SourceOffset = 0;
+			rEntry->FileSize = fSz;
+			rEntry->Mounted = true;
+		}
+	} while (FindNextFileA(hFind, &data));
+
+	FindClose(hFind);
+}
+
+void RamFS::Build()
+{
+	std::random_shuffle(this->Entries.begin(), this->Entries.end());
+	std::sort(this->Entries.begin(), this->Entries.end(), [](const RamFS::Entry *a, const RamFS::Entry *b) {
+		return a->FileName < b->FileName;
+	});
+
+	if (this->BinaryHeader)
+		this->BinaryHeader->Dealloc();
+
+	this->BinaryHeader = PS3FS_HEADER::Prealloc(this->Entries.size(), &this->BinaryHeaderSize);
+	this->TotalSize = this->BinaryHeaderSize;
+	for (int i = 0; i < this->Entries.size(); ++i) {
+		RamFS::Entry* rEntry = this->Entries.at(i);
+		PS3FS_HEADER_ENTRY* bEntry = &this->BinaryHeader->Entries[i];
+		rEntry->BinaryEntry = bEntry;
+
+		strcpy(bEntry->Name, rEntry->FileName.c_str());
+		bEntry->Size = rEntry->FileSize;
+		bEntry->Offset = this->TotalSize;
+		this->TotalSize += bEntry->Size;
+	}
 }

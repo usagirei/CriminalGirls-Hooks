@@ -18,35 +18,49 @@ public:
 	class Entry {
 	public:
 		bool Mounted;
-		wchar_t* FileName;
+		std::string FileName;
 		uint64_t FileSize;
-		uint64_t BaseOffset;
+		std::wstring SourceName;
+		uint64_t SourceOffset;
 		PS3FS_HEADER_ENTRY* BinaryEntry;
 	};
 
-	typedef void (*FileReadCallback)(char* fileName);
+	typedef void(*FileReadCallback)(char* fileName);
 
 	RamFS() {
-		OnFileRead = new std::vector<FileReadCallback>();
+		BinaryHeader = nullptr;
+		TotalSize = 0;
+		BinaryHeaderSize = 0;
 	}
 
 	~RamFS() {
-		delete OnFileRead;
+		if (this->BinaryHeader) {
+			this->BinaryHeader->Dealloc();
+			this->BinaryHeader = nullptr;
+		}
+
+		for (int i = 0; i < this->Entries.size(); ++i)
+			delete this->Entries[i];
+		this->Entries.clear();
 	}
 
-	std::vector<FileReadCallback> *OnFileRead;
+	std::vector<FileReadCallback> OnFileRead;
 
-	Entry* Entries;
-	uint64_t NumEntries;
-	uint64_t BinaryHeaderSize;
+	std::vector<Entry*> Entries;
+
 	uint64_t TotalSize;
+	uint64_t BinaryHeaderSize;
 	PS3FS_HEADER* BinaryHeader;
 
 	RamFS::Tracker* CreateTracker();
-	uint64_t FindEntryOffset(char * pFileName, uint64_t* pDataSize);
 
-	static void LstGen(const char* pDataFileName);
-	static RamFS* Open(const char* pDataFileName);
-	static void Close(RamFS* pFileSystem);
+	RamFS::Entry* FindEntry(const std::string &rName);
+	RamFS::Entry* CreateEntry(const std::string &rName);
+
+	void MountDat(const std::string &pDatFileName);
+	void MountDir(const std::string &pFolderName);
+	void MountZip(const std::string &pZipFileName);
+
+	void Build();
 };
 

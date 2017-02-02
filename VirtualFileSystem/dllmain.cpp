@@ -80,7 +80,8 @@ PDWORD WINAPI HK_ENTRYPOINT_SYMBOL(UINT sdkVersion) {
 }
 
 void Deinitialize() {
-	
+	delete VirtualFileSystem::DataEn;
+	delete VirtualFileSystem::DataJp;
 }
 
 void Initialize() {
@@ -116,8 +117,8 @@ void Initialize() {
 	AudioState.TpkDataB = new char[4 * 1024 * 1024];
 
 	if (VirtualFileSystem::DataEn) {
-		VirtualFileSystem::DataEn->OnFileRead->push_back(&TryLoadAudioTPK);
-		VirtualFileSystem::DataEn->OnFileRead->push_back(&UpdateKnightState);
+		VirtualFileSystem::DataEn->OnFileRead.push_back(&TryLoadAudioTPK);
+		VirtualFileSystem::DataEn->OnFileRead.push_back(&UpdateKnightState);
 		tpkTracker = VirtualFileSystem::DataEn->CreateTracker();
 	}
 	else {
@@ -127,8 +128,8 @@ void Initialize() {
 	}
 
 	if (VirtualFileSystem::DataJp) {
-		VirtualFileSystem::DataJp->OnFileRead->push_back(&TryLoadAudioTPK);
-		VirtualFileSystem::DataJp->OnFileRead->push_back(&UpdateKnightState);
+		VirtualFileSystem::DataJp->OnFileRead.push_back(&TryLoadAudioTPK);
+		VirtualFileSystem::DataJp->OnFileRead.push_back(&UpdateKnightState);
 		//tpkTracker = VirtualFileSystem::DataJp->CreateTracker();
 	}
 	else {
@@ -151,6 +152,7 @@ bool ApplyPatches() {
 		int read = fread(crcBuf, 1, 4096, file);
 		crc32 = hPatchCRC32(crc32, crcBuf, read);
 	}
+	fclose(file);
 	delete[] crcBuf;
 
 	if (crc32 != hPatchChecksum)
@@ -249,7 +251,11 @@ void TryLoadAudioTPK(char* fName) {
 		strcpy_s(AudioState.TpkDataAName, fName);
 		tcout << "Loading TPK A " << buf << "\n";
 
-		tpkPos = tpkTracker->FileSystem->FindEntryOffset(buf, &tpkSz);
+		auto entry = tpkTracker->FileSystem->FindEntry(buf);
+
+		tpkPos = entry->BinaryEntry->Offset;
+		tpkSz = entry->BinaryEntry->Size;
+
 		tpkTracker->Seek(tpkPos, FILE_BEGIN);
 		tpkTracker->Read(AudioState.TpkDataA, tpkSz, &tpkRd);
 
@@ -276,7 +282,11 @@ void TryLoadAudioTPK(char* fName) {
 		strcpy_s(AudioState.TpkDataBName, fName);
 		tcout << "Loading TPK B " << buf << "\n";
 
-		tpkPos = tpkTracker->FileSystem->FindEntryOffset(buf, &tpkSz);
+		auto entry = tpkTracker->FileSystem->FindEntry(buf);
+		
+		tpkPos = entry->BinaryEntry->Offset;
+		tpkSz = entry->BinaryEntry->Size;
+
 		tpkTracker->Seek(tpkPos, FILE_BEGIN);
 		tpkTracker->Read(AudioState.TpkDataB, tpkSz, &tpkRd);
 

@@ -43,8 +43,17 @@ void VirtualFileSystem::Initialize()
 	//RamFS::LstGen("data_en");
 	//RamFS::LstGen("data_jp");
 
-	DataEn = RamFS::Open("data_en");
-	DataJp = RamFS::Open("data_jp");
+	DataEn = new RamFS();
+	DataJp = new RamFS();
+
+	DataEn->MountDat("data/data_en.dat");
+	DataEn->MountDir("data/data_en/");
+	
+	DataJp->MountDat("data/data_jp.dat");
+	DataJp->MountDir("data/data_jp/");
+
+	DataEn->Build();
+	DataJp->Build();
 
 	IATHook32<adCreateFileW>(msvcr, HK_KERNEL32_MODULE, "CreateFileW", VirtualFileSystem::CreateFileW, &VirtualFileSystem::ogCreateFileW);
 	IATHook32<adCreateFileA>(msvcr, HK_KERNEL32_MODULE, "CreateFileA", VirtualFileSystem::CreateFileA, &VirtualFileSystem::ogCreateFileA);
