@@ -1,5 +1,6 @@
 #include "RamFS.h"
 #include "stdafx.h"
+#include "pkzip.h"
 
 #include <iostream>
 #include <algorithm>
@@ -117,8 +118,9 @@ RamFS::Tracker *RamFS::CreateTracker()
 
 RamFS::Entry * RamFS::FindEntry(const std::string &rName)
 {
-	auto found = std::find_if(this->Entries.begin(), this->Entries.end(), [rName](const RamFS::Entry *e) {
-		return e->FileName == rName;
+	int hash = RamFS::Entry::HashFunc(rName);
+	auto found = std::find_if(this->Entries.begin(), this->Entries.end(), [hash](const RamFS::Entry *e) {
+		return e->Hash == hash;
 	});
 	if (found == this->Entries.end())
 		return nullptr;
@@ -128,8 +130,7 @@ RamFS::Entry * RamFS::FindEntry(const std::string &rName)
 RamFS::Entry* RamFS::CreateEntry(const std::string &rName) {
 	RamFS::Entry *rEntry = FindEntry(rName);
 	if (!rEntry) {
-		rEntry = new RamFS::Entry();
-		rEntry->FileName = rName;
+		rEntry = new RamFS::Entry(rName);
 
 		std::transform(rEntry->FileName.begin(), rEntry->FileName.end(), rEntry->FileName.begin(), tolower);
 
@@ -177,6 +178,8 @@ void RamFS::MountDir(const std::string &dirName)
 	if (hFind == INVALID_HANDLE_VALUE)
 		return;
 
+	std::cout << "Mounting Directory: " << dirName << "\n";
+
 	do {
 		std::string fileName = dirName + data.cFileName;
 		std::ifstream stream(fileName);
@@ -187,8 +190,8 @@ void RamFS::MountDir(const std::string &dirName)
 			RamFS::Entry *rEntry = this->CreateEntry(data.cFileName);
 
 			rEntry->SourceName = StringToWideString(fileName);
-
 			rEntry->SourceOffset = 0;
+
 			rEntry->FileSize = fSz;
 			rEntry->Mounted = true;
 		}
@@ -197,9 +200,75 @@ void RamFS::MountDir(const std::string &dirName)
 	FindClose(hFind);
 }
 
+void RamFS::MountZip(const std::string & zipFileName)
+{
+	FILE* zipFile;
+	int error = fopen_s(&zipFile, zipFileName.c_str(), "rb");
+
+	std::cout << "Mounting ZIP File: " << zipFileName << "\n";
+
+	int signature;
+	fread(&signature, 4, 1, zipFile);
+	if (signature != ZIP_FILE_ENTRY_SIGNATURE) {
+		std::cout << "Not a ZIP File\n";
+		return;
+	}
+
+	fseek(zipFile, 0, SEEK_END);
+	int zipSize = ftell(zipFile);
+
+	int curPos = zipSize - 22;
+	bool found = false;
+	while (curPos > 0) {
+		fseek(zipFile, curPos, SEEK_SET);
+		fread(&signature, 4, 1, zipFile);
+		if (signature == ZIP_END_CD_SIGNATURE) {
+			fseek(zipFile, curPos, SEEK_SET);
+			found = true;
+			break;
+		}
+		curPos -= 5;
+	}
+
+	if (!found) {
+		std::cout << "Couldn't locate ZIP Central Directory\n";
+		return;
+	}
+
+	ZIPENDLOCATOR eocd(zipFile);
+
+	fseek(zipFile, eocd.DirectoryOffset, SEEK_SET);
+
+	for (int i = 0; i < eocd.EntriesInDirectory; ++i) {
+		ZIPDIRENTRY dirEntry(zipFile);
+
+		if (dirEntry.Compression != COMPTYPE::STORED) {
+			tcout << "ZIP Compression Unsupported. Use Store Mode\n";
+			continue;
+		}
+
+		int nextHeader = ftell(zipFile);
+
+		fseek(zipFile, dirEntry.HeaderOffset, SEEK_SET);
+		ZIPFILERECORD fileRecord(zipFile, false);
+
+		RamFS::Entry* rEntry = this->CreateEntry(fileRecord.FileName);
+
+		rEntry->SourceName = StringToWideString(zipFileName);
+		rEntry->SourceOffset = ftell(zipFile) - fileRecord.CompressedSize;
+
+		rEntry->FileSize = fileRecord.UncompressedSize;
+		rEntry->Mounted = true;
+
+		fseek(zipFile, nextHeader, SEEK_SET);
+	}
+
+	fclose(zipFile);
+}
+
 void RamFS::Build()
 {
-	std::random_shuffle(this->Entries.begin(), this->Entries.end());
+	//std::random_shuffle(this->Entries.begin(), this->Entries.end());
 	std::sort(this->Entries.begin(), this->Entries.end(), [](const RamFS::Entry *a, const RamFS::Entry *b) {
 		return a->FileName < b->FileName;
 	});

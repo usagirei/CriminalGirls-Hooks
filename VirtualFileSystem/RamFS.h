@@ -18,11 +18,21 @@ public:
 	class Entry {
 	public:
 		bool Mounted;
+		size_t Hash;
 		std::string FileName;
 		uint64_t FileSize;
 		std::wstring SourceName;
 		uint64_t SourceOffset;
 		PS3FS_HEADER_ENTRY* BinaryEntry;
+
+		Entry(const std::string &str) : FileName(str), Hash(HashFunc(str)) {
+
+		}
+
+		static size_t HashFunc(const std::string &str) {
+			std::hash<std::string> hashFn;
+			return hashFn(str);
+		}
 	};
 
 	typedef void(*FileReadCallback)(char* fileName);

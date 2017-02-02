@@ -186,6 +186,7 @@ echo #define GIT_COMMIT_COUNT 0 &gt;&gt; dynversion.h</Command>
     <ClInclude Include="hotkeys.h" />
     <ClInclude Include="iatHook.h" />
     <ClInclude Include="patch.h" />
+    <ClInclude Include="pkzip.h" />
     <ClInclude Include="PS3FS.h" />
     <ClInclude Include="RamFS.h" />
     <ClInclude Include="resource.h" />
@@ -211,6 +212,7 @@ echo #define GIT_COMMIT_COUNT 0 &gt;&gt; dynversion.h</Command>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="pkzip.cpp" />
     <ClCompile Include="RamFS.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="triggers.cpp" />

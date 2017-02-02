@@ -29,6 +29,18 @@ RamVFS_ViewMap* openViews;
 RamFS* VirtualFileSystem::DataEn;
 RamFS* VirtualFileSystem::DataJp;
 
+void MountZips(RamFS *fs, const std::string &zipsDir) {
+	WIN32_FIND_DATAA data;
+	HANDLE hFind = FindFirstFileA((zipsDir + "*.zip").c_str(), &data);
+
+	if (hFind == INVALID_HANDLE_VALUE)
+		return;
+
+	do {
+		fs->MountZip(zipsDir + data.cFileName);
+	} while (FindNextFileA(hFind, &data));
+}
+
 void VirtualFileSystem::Initialize()
 {
 	openViews = new RamVFS_ViewMap();
@@ -40,16 +52,18 @@ void VirtualFileSystem::Initialize()
 	_tcsncat_s(dllPath, sizeof(dllPath) / sizeof(_TCHAR), HK_MSVCRUNTIME_MODULE, sizeof(HK_MSVCRUNTIME_MODULE) / sizeof(_TCHAR));
 	HMODULE msvcr = LoadLibrary(dllPath);
 
-	//RamFS::LstGen("data_en");
-	//RamFS::LstGen("data_jp");
+	CreateDirectoryA("data/data_en/", nullptr);
+	CreateDirectoryA("data/data_jp/", nullptr);
+	CreateDirectoryA("mods/", nullptr);
 
 	DataEn = new RamFS();
-	DataJp = new RamFS();
-
 	DataEn->MountDat("data/data_en.dat");
+	MountZips(DataEn, "mods/");
 	DataEn->MountDir("data/data_en/");
-	
+
+	DataJp = new RamFS();
 	DataJp->MountDat("data/data_jp.dat");
+	MountZips(DataJp, "mods/");
 	DataJp->MountDir("data/data_jp/");
 
 	DataEn->Build();
@@ -83,7 +97,6 @@ HANDLE WINAPI VirtualFileSystem::CreateFileW(LPCWSTR lpFileName, DWORD dwDesired
 	//std::wcout << "CreateFileW: " << lpFileName << "\n";
 	return hFile;
 }
-
 
 HANDLE WINAPI VirtualFileSystem::CreateFileA(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
 {
