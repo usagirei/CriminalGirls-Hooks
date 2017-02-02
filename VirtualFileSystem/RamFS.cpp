@@ -140,7 +140,6 @@ RamFS::Entry* RamFS::CreateEntry(const std::string &rName) {
 }
 
 void RamFS::MountDat(const std::string &pName) {
-	wchar_t entryNameBuf[48];
 
 	FILE* inDatFile;
 	int error = fopen_s(&inDatFile, pName.c_str(), "rb");
@@ -247,12 +246,24 @@ void RamFS::MountZip(const std::string & zipFileName)
 			continue;
 		}
 
+		// Directory
+		if (dirEntry.CompressedSize == 0)
+			continue;
+
 		int nextHeader = ftell(zipFile);
 
 		fseek(zipFile, dirEntry.HeaderOffset, SEEK_SET);
 		ZIPFILERECORD fileRecord(zipFile, false);
 
-		RamFS::Entry* rEntry = this->CreateEntry(fileRecord.FileName);
+		std::string entryName = fileRecord.FileName;
+		entryName = entryName.substr(entryName.rfind('/')+1);
+
+		if (entryName.length() > 48) {
+			std::cout << "File Name Too Long: " << entryName;
+			continue;
+		}
+
+		RamFS::Entry* rEntry = this->CreateEntry(entryName);
 
 		rEntry->SourceName = StringToWideString(zipFileName);
 		rEntry->SourceOffset = ftell(zipFile) - fileRecord.CompressedSize;
