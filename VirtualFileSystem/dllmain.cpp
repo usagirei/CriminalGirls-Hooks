@@ -34,6 +34,8 @@ void Deinitialize();
 
 RamFS::Tracker* tpkTracker;
 
+conutil::con_util con::console;
+
 BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
 {
 	switch (ul_reason_for_call)

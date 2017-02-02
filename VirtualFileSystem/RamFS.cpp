@@ -1,6 +1,7 @@
 #include "RamFS.h"
 #include "stdafx.h"
 #include "pkzip.h"
+#include "console.h"
 
 #include <iostream>
 #include <algorithm>
@@ -154,7 +155,9 @@ void RamFS::MountDat(const std::string &pName) {
 	int error = fopen_s(&inDatFile, pName.c_str(), "rb");
 
 	if (error != 0) {
+		std::cout << con::fgCol<con::Red>;
 		std::cout << "Failed to Open Dat File: " << pName << "\n";
+		std::cout << con::fgCol<con::Gray>;
 		return;
 	}
 
@@ -169,7 +172,9 @@ void RamFS::MountDat(const std::string &pName) {
 		std::string entryName = datEntry.Name;
 		RamFS::Entry *rEntry = this->CreateEntry(entryName);
 		if (!rEntry) {
-			std::cout << "Failed to Create Entry: " << entryName;
+			std::cout << con::fgCol<con::Red>;
+			std::cout << "Failed to Create Entry: " << entryName << "\n";
+			std::cout << con::fgCol<con::Gray>;
 			continue;
 		}
 
@@ -192,7 +197,7 @@ void RamFS::MountDir(const std::string &dirName)
 		return;
 
 	std::cout << "Mounting Directory: " << dirName << "\n";
-	
+
 	do {
 		std::string fileName = dirName + data.cFileName;
 		std::ifstream stream(fileName);
@@ -203,7 +208,9 @@ void RamFS::MountDir(const std::string &dirName)
 			std::string entryName = data.cFileName;
 			RamFS::Entry *rEntry = this->CreateEntry(entryName);
 			if (!rEntry) {
-				std::cout << "Failed to Create Entry: " << entryName;
+				std::cout << con::fgCol<con::Red>;
+				std::cout << "Failed to Create Entry: " << entryName << "\n";
+				std::cout << con::fgCol<con::Gray>;
 				continue;
 			}
 
@@ -228,7 +235,9 @@ void RamFS::MountZip(const std::string & zipFileName)
 	int signature;
 	fread(&signature, 4, 1, zipFile);
 	if (signature != ZIP_FILE_ENTRY_SIGNATURE) {
-		std::cout << "Not a ZIP File\n";
+		std::cout << con::fgCol<con::Red>;
+		std::cout << "Not a ZIP File \n";
+		std::cout << con::fgCol<con::Gray>;
 		return;
 	}
 
@@ -249,7 +258,9 @@ void RamFS::MountZip(const std::string & zipFileName)
 	}
 
 	if (!found) {
+		std::cout << con::fgCol<con::Red>;
 		std::cout << "Couldn't locate ZIP Central Directory\n";
+		std::cout << con::fgCol<con::Gray>;
 		return;
 	}
 
@@ -261,7 +272,9 @@ void RamFS::MountZip(const std::string & zipFileName)
 		ZIPDIRENTRY dirEntry(zipFile);
 
 		if (dirEntry.Compression != COMPTYPE::STORED) {
+			std::cout << con::fgCol<con::Red>;
 			tcout << "ZIP Compression Unsupported. Use Store Mode\n";
+			std::cout << con::fgCol<con::Gray>;
 			continue;
 		}
 
@@ -275,19 +288,21 @@ void RamFS::MountZip(const std::string & zipFileName)
 		ZIPFILERECORD fileRecord(zipFile, false);
 
 		std::string entryName = fileRecord.FileName;
-		entryName = entryName.substr(entryName.rfind('/')+1);
+		entryName = entryName.substr(entryName.rfind('/') + 1);
 
 		RamFS::Entry* rEntry = this->CreateEntry(entryName);
 		if (!rEntry) {
-			std::cout << "Failed to Create Entry: " << entryName;
-			continue;
+			std::cout << con::fgCol<con::Red>;
+			std::cout << "Failed to Create Entry: " << entryName << "\n";
+			std::cout << con::fgCol<con::Gray>;
 		}
+		else {
+			rEntry->SourceName = StringToWideString(zipFileName);
+			rEntry->SourceOffset = ftell(zipFile) - fileRecord.CompressedSize;
 
-		rEntry->SourceName = StringToWideString(zipFileName);
-		rEntry->SourceOffset = ftell(zipFile) - fileRecord.CompressedSize;
-
-		rEntry->FileSize = fileRecord.UncompressedSize;
-		rEntry->Mounted = true;
+			rEntry->FileSize = fileRecord.UncompressedSize;
+			rEntry->Mounted = true;
+		}
 
 		fseek(zipFile, nextHeader, SEEK_SET);
 	}

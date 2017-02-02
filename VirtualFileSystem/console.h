@@ -4,7 +4,7 @@
 
 #include "stdafx.h"
 
-namespace {
+namespace conutil {
 
 	static const WORD bgMask(BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED | BACKGROUND_INTENSITY);
 	static const WORD fgMask(FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_INTENSITY);
@@ -28,7 +28,7 @@ namespace {
 	static const WORD flMagenta(flDarkMagenta | FOREGROUND_INTENSITY);
 	static const WORD flYellow(flDarkYellow | FOREGROUND_INTENSITY);
 
-	static class con_util
+	class con_util
 	{
 	private:
 		DWORD                       cCharsWritten;
@@ -72,33 +72,33 @@ namespace {
 			csbi.wAttributes |= wFlags;
 			SetConsoleTextAttribute(hCon, csbi.wAttributes);
 		}
-	} console;
-
-
+	};
 }
 
 namespace con {
 
 	typedef WORD CONSOLE_COLOR;
 
-	static const CONSOLE_COLOR Black(flBlack);
-	static const CONSOLE_COLOR DarkRed(flDarkRed);
-	static const CONSOLE_COLOR DarkGreen(flDarkGreen);
-	static const CONSOLE_COLOR DarkBlue(flDarkBlue);
-	static const CONSOLE_COLOR DarkCyan(flDarkCyan);
-	static const CONSOLE_COLOR DarkMagenta(flDarkMagenta);
-	static const CONSOLE_COLOR DarkYellow(flDarkYellow);
-	static const CONSOLE_COLOR Gray(flGray);
-	static const CONSOLE_COLOR DarkGray(flDarkGray);
-	static const CONSOLE_COLOR White(flWhite);
-	static const CONSOLE_COLOR Blue(flBlue);
-	static const CONSOLE_COLOR Green(flGreen);
-	static const CONSOLE_COLOR Red(flRed);
-	static const CONSOLE_COLOR Cyan(flCyan);
-	static const CONSOLE_COLOR Magenta(flMagenta);
-	static const CONSOLE_COLOR Yellow(flYellow);
+	static const CONSOLE_COLOR Black(conutil::flBlack);
+	static const CONSOLE_COLOR DarkRed(conutil::flDarkRed);
+	static const CONSOLE_COLOR DarkGreen(conutil::flDarkGreen);
+	static const CONSOLE_COLOR DarkBlue(conutil::flDarkBlue);
+	static const CONSOLE_COLOR DarkCyan(conutil::flDarkCyan);
+	static const CONSOLE_COLOR DarkMagenta(conutil::flDarkMagenta);
+	static const CONSOLE_COLOR DarkYellow(conutil::flDarkYellow);
+	static const CONSOLE_COLOR Gray(conutil::flGray);
+	static const CONSOLE_COLOR DarkGray(conutil::flDarkGray);
+	static const CONSOLE_COLOR White(conutil::flWhite);
+	static const CONSOLE_COLOR Blue(conutil::flBlue);
+	static const CONSOLE_COLOR Green(conutil::flGreen);
+	static const CONSOLE_COLOR Red(conutil::flRed);
+	static const CONSOLE_COLOR Cyan(conutil::flCyan);
+	static const CONSOLE_COLOR Magenta(conutil::flMagenta);
+	static const CONSOLE_COLOR Yellow(conutil::flYellow);
 
-	void SetHandle(HANDLE handle) {
+	extern conutil::con_util console;
+
+	inline void SetHandle(HANDLE handle) {
 		console.hCon = handle;
 	}
 
@@ -113,7 +113,7 @@ namespace con {
 	inline std::ostream& fgCol(std::ostream& os)
 	{
 		os.flush();
-		console.SetColor(color, bgMask);
+		console.SetColor(color, conutil::bgMask);
 		return os;
 	}
 
@@ -121,7 +121,7 @@ namespace con {
 	inline std::wostream& fgCol(std::wostream& os)
 	{
 		os.flush();
-		console.SetColor(color, bgMask);
+		console.SetColor(color, conutil::bgMask);
 		return os;
 	}
 
@@ -129,7 +129,7 @@ namespace con {
 	inline std::ostream& bgCol(std::ostream& os)
 	{
 		os.flush();
-		console.SetColor(color << 4, FgMask);
+		console.SetColor(color << 4, conutil::fgMask);
 		return os;
 	}
 
@@ -137,7 +137,7 @@ namespace con {
 	inline std::wostream& bgCol(std::wostream& os)
 	{
 		os.flush();
-		console.SetColor(color << 4, FgMask);
+		console.SetColor(color << 4, conutil::fgMask);
 		return os;
 	}
 }
