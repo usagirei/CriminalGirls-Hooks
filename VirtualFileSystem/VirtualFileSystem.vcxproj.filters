@@ -54,9 +54,6 @@
     <ClInclude Include="console.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="hotkeys.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="vk.h">
       <Filter>Header Files</Filter>
     </ClInclude>

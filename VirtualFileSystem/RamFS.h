@@ -17,17 +17,17 @@ public:
 
 	class Entry {
 	public:
-		bool Mounted;
-		size_t Hash;
+		bool Mounted = false;
+		size_t Hash = 0;
+
 		std::string FileName;
-		uint64_t FileSize;
+		uint64_t FileSize = 0;
+
 		std::wstring SourceName;
-		uint64_t SourceOffset;
-		PS3FS_HEADER_ENTRY* BinaryEntry;
+		uint64_t SourceOffset = 0;
+		PS3FS_HEADER_ENTRY* BinaryEntry = nullptr;
 
-		Entry(const std::string &str) : FileName(str), Hash(HashFunc(str)) {
-
-		}
+		explicit Entry(const std::string &str) : FileName(str), Hash(HashFunc(str)) {}
 
 		static size_t HashFunc(const std::string &str) {
 			std::hash<std::string> hashFn;
@@ -37,11 +37,7 @@ public:
 
 	typedef void(*FileReadCallback)(char* fileName);
 
-	RamFS() {
-		BinaryHeader = nullptr;
-		TotalSize = 0;
-		BinaryHeaderSize = 0;
-	}
+	RamFS() {}
 
 	~RamFS() {
 		if (this->BinaryHeader) {
@@ -49,7 +45,7 @@ public:
 			this->BinaryHeader = nullptr;
 		}
 
-		for (int i = 0; i < this->Entries.size(); ++i)
+		for (size_t i = 0; i < this->Entries.size(); ++i)
 			delete this->Entries[i];
 		this->Entries.clear();
 	}
@@ -58,9 +54,9 @@ public:
 
 	std::vector<Entry*> Entries;
 
-	uint64_t TotalSize;
-	uint64_t BinaryHeaderSize;
-	PS3FS_HEADER* BinaryHeader;
+	uint64_t TotalSize = 0;
+	uint64_t BinaryHeaderSize = 0;
+	PS3FS_HEADER* BinaryHeader = nullptr;
 
 	RamFS::Tracker* CreateTracker();
 

@@ -35,8 +35,8 @@ struct AState {
 	OggData* OggDataA = nullptr;
 	OggData* OggDataB = nullptr;
 
-	int NumOggFilesA = 0;
-	int NumOggFilesB = 0;
+	uint32_t NumOggFilesA = 0;
+	uint32_t NumOggFilesB = 0;
 
 	char* TpkDataA = nullptr;
 	char* TpkDataB = nullptr;

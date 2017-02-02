@@ -104,7 +104,7 @@ void Initialize() {
 	}
 	tcout << con::fgCol<con::Gray>;
 
-	srand(time(nullptr));
+	srand(time(NULL));
 
 	tpkTracker = nullptr;
 
@@ -145,7 +145,11 @@ bool ApplyPatches() {
 	TCHAR filePath[260];
 	GetModuleFileName(module, filePath, 260);
 
-	FILE* file = _tfopen(filePath, _TEXT("rb"));
+	FILE* file;
+	int error = _tfopen_s(&file, filePath, _TEXT("rb"));
+	if (error)
+		return false;
+
 	uint32_t crc32 = 0;
 	unsigned char *crcBuf = new  unsigned char[4096];
 	while (!feof(file)) {
@@ -233,7 +237,7 @@ void TryLoadAudioTPK(char* fName) {
 	bool knighted = false;
 	for (int i = 0; i < 9; i++)
 	{
-		if (stricmp(GameState.Girl, GameState.KnightStatus[i].Girl) == 0) {
+		if (_stricmp(GameState.Girl, GameState.KnightStatus[i].Girl) == 0) {
 			knighted = GameState.KnightStatus[i].Status;
 			break;
 		}
@@ -299,7 +303,7 @@ void TryLoadAudioTPK(char* fName) {
 			delete[] AudioState.OggDataB;
 
 		AudioState.OggDataB = new OggData[nFiles];
-		AudioState.NumOggFilesB = nFiles;
+		AudioState.NumOggFilesB = (uint32_t) nFiles;
 
 		for (int i = 0; i < nFiles;++i) {
 			AudioState.OggDataB[i].Data = (uint8_t*)(AudioState.TpkDataB + entries[i].Offset);
@@ -309,9 +313,9 @@ void TryLoadAudioTPK(char* fName) {
 }
 
 void UpdateKnightState(char* fName) {
-	if (strnicmp(fName, "if_camp_", 8) != 0)
+	if (_strnicmp(fName, "if_camp_", 8) != 0)
 		return;
-	if (strnicmp(fName, "if_camp_res", 11) == 0)
+	if (_strnicmp(fName, "if_camp_res", 11) == 0)
 		return;
 
 	char girlName[4];
@@ -324,7 +328,7 @@ void UpdateKnightState(char* fName) {
 	for (int i = 0; i < 9; i++) {
 		auto *entry = &GameState.KnightStatus[i];
 		bool empty = entry->Girl[0] == 0;
-		if (empty || (stricmp(entry->Girl, girlName) == 0)) {
+		if (empty || (_stricmp(entry->Girl, girlName) == 0)) {
 			if (empty)
 				strcpy_s(entry->Girl, girlName);
 			entry->Status = knighted;
