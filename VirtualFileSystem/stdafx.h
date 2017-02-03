@@ -8,6 +8,8 @@
 #include "targetver.h"
 
 #include <stdlib.h>
+#include <tchar.h>
+#include <string>
 
 
 #define _DR1(base,offset) *(uint32_t*)((uint8_t*)base + offset)
@@ -20,7 +22,6 @@
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 // Windows Header Files:
 #include <windows.h>
-#include <tchar.h>
 
 #define __STRINGIFY(x) #x
 #define TOSTRING(x) __STRINGIFY(x)
@@ -37,6 +38,7 @@
 #define DLL_EXPORT __declspec(dllimport)
 #endif
 
-
+std::wstring StringToWideString(const std::string& str, int codePage = CP_ACP);
+std::string GetLastErrorAsString();
 
 // TODO: reference additional headers your program requires here

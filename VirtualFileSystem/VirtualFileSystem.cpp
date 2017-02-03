@@ -12,7 +12,7 @@
 
 #include "RamFS.h"
 
-#define HK_MSVCRUNTIME_MODULE _TEXT("\\msvcr120.dll")
+#define HK_MSVCRUNTIME_MODULE _TEXT("msvcr120.dll")
 #define HK_KERNEL32_MODULE "kernel32.dll"
 
 adCreateFileW VirtualFileSystem::ogCreateFileW;
@@ -48,9 +48,18 @@ void VirtualFileSystem::Initialize()
 	DataJp = nullptr;
 
 	TCHAR dllPath[260];
-	GetSystemDirectory(dllPath, sizeof(dllPath) / sizeof(_TCHAR));
+	int dllPathSz = sizeof(dllPath) / sizeof(_TCHAR);
+	GetSystemDirectory(dllPath, dllPathSz);
+	_tcsncat_s(dllPath, dllPathSz, _TEXT("\\"), 2);
 	_tcsncat_s(dllPath, sizeof(dllPath) / sizeof(_TCHAR), HK_MSVCRUNTIME_MODULE, sizeof(HK_MSVCRUNTIME_MODULE) / sizeof(_TCHAR));
 	HMODULE msvcr = LoadLibrary(dllPath);
+
+	if (!msvcr) {
+		std::wstring errMessage = StringToWideString(GetLastErrorAsString());
+		MessageBox(NULL, errMessage.c_str(), _T("Error Loading ") HK_MSVCRUNTIME_MODULE, MB_ICONERROR | MB_OK);
+		exit(1);
+		return;
+	}
 
 	CreateDirectoryA("data/data_en/", nullptr);
 	CreateDirectoryA("data/data_jp/", nullptr);

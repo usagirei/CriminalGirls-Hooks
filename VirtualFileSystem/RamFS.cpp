@@ -13,17 +13,6 @@
 
 void ZIPInflatePreProcessor(const RamFS::Entry& entry, char* buffer);
 
-std::wstring StringToWideString(const std::string& str, int codePage = CP_ACP)
-{
-	int cstrl = str.length() + 1;
-	auto temp = new wchar_t[cstrl];
-	MultiByteToWideChar(codePage, 0, str.c_str(), -1, temp, cstrl);
-	auto wstr = std::wstring(temp);
-	delete[] temp;
-	return wstr;
-}
-
-
 void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 {
 	RamFS &vfs = *this->FileSystem;

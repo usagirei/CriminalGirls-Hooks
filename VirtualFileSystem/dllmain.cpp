@@ -55,6 +55,13 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserve
 			_tcsncat_s(dllPath, dllPathSz, epModule, epModuleSz);
 			HMODULE hEntry = LoadLibrary(dllPath);
 
+			if (!hEntry) {
+				std::wstring errMessage = StringToWideString(GetLastErrorAsString());
+				MessageBox(NULL, errMessage.c_str(), _T("Error Loading ") HK_ENTRYPOINT_MODULE, MB_ICONERROR | MB_OK);
+				exit(1);
+				return FALSE;
+			}
+
 			ogEntryPointCall = (HK_ENTRYPOINT_DELEGATE)GetProcAddress(hEntry, HK_ENTRYPOINT_SYMBOL_STR);
 
 			Initialize();
@@ -82,8 +89,8 @@ PDWORD WINAPI HK_ENTRYPOINT_SYMBOL(UINT sdkVersion) {
 }
 
 void Deinitialize() {
-	delete VirtualFileSystem::DataEn;
-	delete VirtualFileSystem::DataJp;
+	if (VirtualFileSystem::DataEn) delete VirtualFileSystem::DataEn;
+	if (VirtualFileSystem::DataJp) delete VirtualFileSystem::DataJp;
 }
 
 void Initialize() {
@@ -245,10 +252,10 @@ void TryLoadAudioTPK(char* fName) {
 		}
 	}
 
-	int audioSet = knighted 
-		? 2 
-		: (GameState.Level >= 2 
-			? 1 
+	int audioSet = knighted
+		? 2
+		: (GameState.Level >= 2
+			? 1
 			: 0);
 
 	// Breathing - Banter TPK
@@ -289,7 +296,7 @@ void TryLoadAudioTPK(char* fName) {
 		tcout << "Loading TPK B " << buf << "\n";
 
 		auto entry = tpkTracker->FileSystem->FindEntry(buf);
-		
+
 		tpkPos = entry->BinaryEntry->Offset;
 		tpkSz = entry->BinaryEntry->Size;
 
@@ -305,7 +312,7 @@ void TryLoadAudioTPK(char* fName) {
 			delete[] AudioState.OggDataB;
 
 		AudioState.OggDataB = new OggData[nFiles];
-		AudioState.NumOggFilesB = (uint32_t) nFiles;
+		AudioState.NumOggFilesB = (uint32_t)nFiles;
 
 		for (int i = 0; i < nFiles;++i) {
 			AudioState.OggDataB[i].Data = (uint8_t*)(AudioState.TpkDataB + entries[i].Offset);
