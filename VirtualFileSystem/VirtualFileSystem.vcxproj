@@ -73,6 +73,8 @@
     <LinkIncremental>true</LinkIncremental>
     <TargetName>d3d9</TargetName>
     <OutDir>$(SolutionDir)$(Configuration)\Hook\</OutDir>
+    <IncludePath>W:\Tools\zlib-1.2.11\;$(IncludePath)</IncludePath>
+    <LibraryPath>W:\Tools\zlib-1.2.11\contrib\vstudio\vc14\x86\ZlibStatDebug\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -81,6 +83,8 @@
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d9</TargetName>
     <OutDir>$(SolutionDir)$(Configuration)\Hook\</OutDir>
+    <IncludePath>W:\Tools\zlib-1.2.11\;$(IncludePath)</IncludePath>
+    <LibraryPath>W:\Tools\zlib-1.2.11\contrib\vstudio\vc14\x86\ZlibStatDebug\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -97,6 +101,8 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>Module.def</ModuleDefinitionFile>
+      <AdditionalDependencies>zlibstat.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ShowProgress>NotSet</ShowProgress>
     </Link>
     <PreBuildEvent>
       <Command>"$(TargetDir)..\hDelta\hDelta.exe" "$(SolutionDir)Patch\steam_criminal_mod.exe" "$(SolutionDir)Patch\steam_criminal_orig.exe" "$(ProjectDir)patch.h"
@@ -144,6 +150,8 @@ echo #define GIT_COMMIT_COUNT 0 &gt;&gt; dynversion.h</Command>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>Module.def</ModuleDefinitionFile>
+      <AdditionalDependencies>zlibstat.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PreBuildEvent>
       <Command>"$(TargetDir)..\hDelta\hDelta.exe" "$(SolutionDir)Patch\steam_criminal_mod.exe" "$(SolutionDir)Patch\steam_criminal_orig.exe" "$(ProjectDir)patch.h"

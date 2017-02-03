@@ -8,6 +8,11 @@
 #include <fstream>
 #include <codecvt>
 
+#include <assert.h>
+#include <zlib.h>
+
+void ZIPInflatePreProcessor(const RamFS::Entry& entry, char* buffer);
+
 std::wstring StringToWideString(const std::string& str, int codePage = CP_ACP)
 {
 	int cstrl = str.length() + 1;
@@ -21,19 +26,19 @@ std::wstring StringToWideString(const std::string& str, int codePage = CP_ACP)
 
 void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 {
-	RamFS* vfs = this->FileSystem;
+	RamFS &vfs = *this->FileSystem;
 
 	bool callback = false;
 
 	*nBytesRead = 0;
 	while (nBytesToRead > 0) {
-		if (this->Position < vfs->BinaryHeaderSize) {
+		if (this->Position < vfs.BinaryHeaderSize) {
 			const uint64_t srcOffset = this->Position;
-			const uint64_t srcRemainder = vfs->BinaryHeaderSize - srcOffset;
+			const uint64_t srcRemainder = vfs.BinaryHeaderSize - srcOffset;
 			const uint32_t toRead = min(srcRemainder, nBytesToRead);
 
 			uint8_t* dst = (uint8_t*)pBuffer;
-			uint8_t* src = ((uint8_t*)vfs->BinaryHeader) + srcOffset;
+			uint8_t* src = ((uint8_t*)vfs.BinaryHeader) + srcOffset;
 
 			memcpy(dst, src, toRead);
 
@@ -43,41 +48,55 @@ void RamFS::Tracker::Read(PVOID pBuffer, DWORD nBytesToRead, PDWORD nBytesRead)
 		}
 		else {
 			bool found = false;
-			for (int i = 0; i < vfs->Entries.size(); i++) {
-				RamFS::Entry* rEntry = vfs->Entries.at(i);
-				PS3FS_HEADER_ENTRY* bEntry = rEntry->BinaryEntry;
+			for (int i = 0; i < vfs.Entries.size(); i++) {
+				RamFS::Entry &rEntry = *(vfs.Entries.at(i));
+
+				PS3FS_HEADER_ENTRY &bEntry = *rEntry.BinaryEntry;
 				uint64_t srcOffset = this->Position;
-				bool afterStart = srcOffset >= bEntry->Offset;
-				bool beforeEnd = srcOffset < (bEntry->Offset + rEntry->FileSize);
+				bool afterStart = srcOffset >= bEntry.Offset;
+				bool beforeEnd = srcOffset < (bEntry.Offset + rEntry.FileSize);
 				bool between = afterStart && beforeEnd;
 				if (between) {
 					if (!callback) {
-						for (int i = 0; i < vfs->OnFileRead.size(); i++) {
-							(*vfs->OnFileRead.at(i))(bEntry->Name);
+						for (int i = 0; i < vfs.OnFileRead.size(); i++) {
+							(*vfs.OnFileRead.at(i))(bEntry.Name);
 						}
 						callback = true;
 					}
 
-					if (rEntry->Mounted)
-						tcout << "Open Mounted File: " << bEntry->Name << "\n";
+					if (rEntry.Mounted)
+						tcout << "Open Mounted File: " << bEntry.Name << "\n";
 
 					found = true;
-					const int64_t vOffset = srcOffset - bEntry->Offset;
-					const int64_t fOffset = rEntry->SourceOffset + vOffset;
-					const int64_t srcRemainder = rEntry->FileSize - vOffset;
-					const int32_t toRead = min(srcRemainder, nBytesToRead);
+					const int64_t vOffset = srcOffset - bEntry.Offset;
+					int32_t toRead;
 
 					// TODO: Caching Pointers, LRU?
-					FILE* fp;
-					int error = _wfopen_s(&fp, rEntry->SourceName.c_str(), L"rb");
+					// Processed Read
+					if (rEntry.FileProcessor) {
+						const int64_t srcRemainder = rEntry.ProcessedFileSize - vOffset;
+						toRead = min(srcRemainder, nBytesToRead);
 
-					_fseeki64(fp, fOffset, FILE_BEGIN);
-					int read = fread((uint8_t*)pBuffer + *nBytesRead, 1, toRead, fp);
-					fclose(fp);
+						if (vfs.ProcessingArea.RequireInvalidate(rEntry)) {
+							vfs.ProcessingArea.Invalidate(rEntry);
+							rEntry.FileProcessor(rEntry, vfs.ProcessingArea.DataBuffer);
+						}
+						memcpy((uint8_t*)pBuffer + *nBytesRead, vfs.ProcessingArea.DataBuffer + vOffset, toRead);
+					}
+					// Standard Read
+					else {
+						const int64_t srcRemainder = rEntry.FileSize - vOffset;
+						toRead = min(srcRemainder, nBytesToRead);
 
-					if (read != toRead)
-					{
-						tcout << "Misread?\n";
+						const int64_t fOffset = rEntry.SourceOffset + vOffset;
+
+						FILE* fp;
+						int error = _wfopen_s(&fp, rEntry.SourceName.c_str(), L"rb");
+						_fseeki64(fp, fOffset, FILE_BEGIN);
+						int read = fread((uint8_t*)pBuffer + *nBytesRead, 1, toRead, fp);
+						fclose(fp);
+						if (read != toRead)
+							tcout << "Misread?\n";
 					}
 
 					*nBytesRead += toRead;
@@ -183,6 +202,9 @@ void RamFS::MountDat(const std::string &pName) {
 		rEntry->SourceOffset = datEntry.Offset;
 		rEntry->FileSize = datEntry.Size;
 		rEntry->Mounted = false;
+
+		rEntry->FileProcessor = nullptr;
+		rEntry->ProcessedFileSize = datEntry.Size;
 	}
 
 	fclose(inDatFile);
@@ -213,6 +235,9 @@ void RamFS::MountDir(const std::string &dirName)
 				std::cout << con::fgCol<con::Gray>;
 				continue;
 			}
+
+			rEntry->FileProcessor = nullptr;
+			rEntry->ProcessedFileSize = fSz;
 
 			rEntry->SourceName = StringToWideString(fileName);
 			rEntry->SourceOffset = 0;
@@ -271,9 +296,9 @@ void RamFS::MountZip(const std::string & zipFileName)
 	for (int i = 0; i < eocd.EntriesInDirectory; ++i) {
 		ZIPDIRENTRY dirEntry(zipFile);
 
-		if (dirEntry.Compression != COMPTYPE::STORED) {
+		if (dirEntry.Compression != COMPTYPE::STORED && dirEntry.Compression != COMPTYPE::DEFLATE) {
 			std::cout << con::fgCol<con::Red>;
-			tcout << "ZIP Compression Unsupported. Use Store Mode\n";
+			tcout << "Compression Type Unsupported. Use Store/Deflate Mode\n";
 			std::cout << con::fgCol<con::Gray>;
 			continue;
 		}
@@ -300,8 +325,16 @@ void RamFS::MountZip(const std::string & zipFileName)
 			rEntry->SourceName = StringToWideString(zipFileName);
 			rEntry->SourceOffset = ftell(zipFile) - fileRecord.CompressedSize;
 
-			rEntry->FileSize = fileRecord.UncompressedSize;
+			rEntry->FileSize = fileRecord.CompressedSize;
 			rEntry->Mounted = true;
+
+			rEntry->ProcessedFileSize = fileRecord.UncompressedSize;
+			if (fileRecord.Compression == COMPTYPE::DEFLATE) {
+				rEntry->FileProcessor = ZIPInflatePreProcessor;
+			}
+			else {
+				rEntry->FileProcessor = nullptr;
+			}
 		}
 
 		fseek(zipFile, nextHeader, SEEK_SET);
@@ -328,8 +361,77 @@ void RamFS::Build()
 		rEntry->BinaryEntry = bEntry;
 
 		strcpy(bEntry->Name, rEntry->FileName.c_str());
-		bEntry->Size = rEntry->FileSize;
+		if (rEntry->FileProcessor)
+			bEntry->Size = rEntry->ProcessedFileSize;
+		else
+			bEntry->Size = rEntry->FileSize;
 		bEntry->Offset = this->TotalSize;
 		this->TotalSize += bEntry->Size;
 	}
 }
+
+void ZIPInflatePreProcessor(const RamFS::Entry & entry, char * buffer)
+{
+	const int CHUNK = 4096;
+	unsigned char* inChunk = new unsigned char[CHUNK];
+	int ret;
+	unsigned char* sBuffer = (unsigned char*)buffer;
+
+	FILE* fp = _wfopen(entry.SourceName.c_str(), L"rb");
+	fseek(fp, entry.SourceOffset, SEEK_SET);
+
+	z_stream strm;
+	strm.zalloc = Z_NULL;
+	strm.zfree = Z_NULL;
+	strm.opaque = Z_NULL;
+	strm.avail_in = 0;
+	strm.next_in = Z_NULL;
+	ret = inflateInit2(&strm, -MAX_WBITS);
+
+	int read = 0;
+	int maxRead = entry.FileSize;
+	int wrote = 0;
+	int maxWrite = entry.ProcessedFileSize;
+
+	do
+	{
+		int toRead = min(CHUNK, maxRead - read);
+		strm.avail_in = fread(inChunk, 1, toRead, fp);
+		read += strm.avail_in;
+
+		if (ferror(fp)) {
+			(void)inflateEnd(&strm);
+			return;
+		}
+		if (strm.avail_in == 0)
+			break;
+
+		strm.next_in = inChunk;
+		do {
+			strm.avail_out = CHUNK;
+			strm.next_out = sBuffer;
+
+			ret = inflate(&strm, Z_NO_FLUSH);
+			assert(ret != Z_STREAM_ERROR);
+
+			switch (ret) {
+				case Z_NEED_DICT:
+					ret = Z_DATA_ERROR;     /* and fall through */
+				case Z_DATA_ERROR:
+				case Z_MEM_ERROR:
+					fclose(fp);
+					(void)inflateEnd(&strm);
+					return;
+			}
+
+			int have = CHUNK - strm.avail_out;
+			wrote += have;
+			sBuffer = (unsigned char*)(buffer + wrote);
+
+		} while (strm.avail_out == 0);
+	} while (ret != Z_STREAM_END);
+	(void)inflateEnd(&strm);
+
+	delete[] inChunk;
+	fclose(fp);
+};

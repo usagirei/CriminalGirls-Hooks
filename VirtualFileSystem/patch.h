@@ -169,9 +169,36 @@ const unsigned char hDelta_22_data[] = {
 	0xE9, 0x86, 0x1B, 0x04, 0x00
 };
 
-const unsigned int hDelta_23_base = 0x00138370;
-const unsigned int hDelta_23_size = 174;
+const unsigned int hDelta_23_base = 0x00113270;
+const unsigned int hDelta_23_size = 28;
 const unsigned char hDelta_23_data[] = {
+	0x56, 0x57, 0x51, 0x8B, 0x4C, 0x24, 0x18, 0x0F, 
+	0xAF, 0x4C, 0x24, 0x1C, 0x8B, 0x74, 0x24, 0x14, 
+	0x8B, 0x7C, 0x24, 0x10, 0xF2, 0xA4, 0x59, 0x5F, 
+	0x5E, 0xC2, 0x10, 0x00
+};
+
+const unsigned int hDelta_24_base = 0x00113440;
+const unsigned int hDelta_24_size = 1;
+const unsigned char hDelta_24_data[] = {
+	0x20
+};
+
+const unsigned int hDelta_25_base = 0x00113452;
+const unsigned int hDelta_25_size = 1;
+const unsigned char hDelta_25_data[] = {
+	0x00
+};
+
+const unsigned int hDelta_26_base = 0x00113591;
+const unsigned int hDelta_26_size = 2;
+const unsigned char hDelta_26_data[] = {
+	0x90, 0x90
+};
+
+const unsigned int hDelta_27_base = 0x00138370;
+const unsigned int hDelta_27_size = 174;
+const unsigned char hDelta_27_data[] = {
 	0x50, 0x60, 0x50, 0xE8, 0x00, 0x00, 0x00, 0x00, 
 	0x58, 0x05, 0x3C, 0x10, 0x00, 0x00, 0xFF, 0x10, 
 	0x89, 0x44, 0x24, 0x20, 0x61, 0x58, 0xC3, 0x00, 
@@ -196,16 +223,16 @@ const unsigned char hDelta_23_data[] = {
 	0xFF, 0xE9, 0x64, 0xE4, 0xFB, 0xFF
 };
 
-const unsigned int hDelta_24_base = 0x00138400;
-const unsigned int hDelta_24_size = 30;
-const unsigned char hDelta_24_data[] = {
+const unsigned int hDelta_28_base = 0x00138400;
+const unsigned int hDelta_28_size = 30;
+const unsigned char hDelta_28_data[] = {
 	0x00, 0x00, 0x50, 0xB8, 0xFB, 0xFF, 0xFF, 0xFF, 
 	0xE8, 0x63, 0xFF, 0xFF, 0xFF, 0x58, 0x83, 0x7C, 
 	0x24, 0x4C, 0x12, 0x0F, 0x85, 0x5E, 0xE3, 0xFB, 
 	0xFF, 0xE9, 0x64, 0xE4, 0xFB, 0xFF
 };
 
-const unsigned int hPatchCount = 25;
+const unsigned int hPatchCount = 29;
 const HPATCH_DATA hPatches[] = {
    { hDelta_00_base, hDelta_00_size, hDelta_00_data },
    { hDelta_01_base, hDelta_01_size, hDelta_01_data },
@@ -231,7 +258,11 @@ const HPATCH_DATA hPatches[] = {
    { hDelta_21_base, hDelta_21_size, hDelta_21_data },
    { hDelta_22_base, hDelta_22_size, hDelta_22_data },
    { hDelta_23_base, hDelta_23_size, hDelta_23_data },
-   { hDelta_24_base, hDelta_24_size, hDelta_24_data }
+   { hDelta_24_base, hDelta_24_size, hDelta_24_data },
+   { hDelta_25_base, hDelta_25_size, hDelta_25_data },
+   { hDelta_26_base, hDelta_26_size, hDelta_26_data },
+   { hDelta_27_base, hDelta_27_size, hDelta_27_data },
+   { hDelta_28_base, hDelta_28_size, hDelta_28_data }
 };
 
 const unsigned int hPatchChecksum = 0xB087F900;

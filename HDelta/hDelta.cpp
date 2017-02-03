@@ -119,9 +119,9 @@ int _tmain(int argc, TCHAR **argv)
 		}
 	}
 
-	uint32_t remSize = inputSize - cleanSize - 1;
+	uint32_t remSize = inputSize - cleanSize;
 	unsigned char* remCode = inputCode + cleanSize;
-	for (int i = remSize; i >= 0; --i) {
+	for (int i = remSize-1; i >= 0; --i) {
 		if (remCode[i] != 0) {
 			break;
 		}
