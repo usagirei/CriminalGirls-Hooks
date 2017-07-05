@@ -1,12 +1,15 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 //#include <tchar.h>
 
+#include "stdafx.h"
+
 #include <tchar.h>
 #include <stdio.h>
 #include <time.h>
 #include <iostream>
+#include <libloaderapi.h>
 
-#include "stdafx.h"
+#include "iatHook.h"
 #include "VirtualFileSystem.h"
 
 #include "patch.h"
@@ -45,7 +48,7 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserve
 			AllocConsole();
 			freopen("CONOUT$", "w", stdout);
 
-			TCHAR dllPath[260];
+			TCHAR dllPath[MAX_PATH];
 			const UINT dllPathSz = sizeof(dllPath) / sizeof(_TCHAR);
 			const TCHAR* epModule = HK_ENTRYPOINT_MODULE;
 			const UINT epModuleSz = sizeof(HK_ENTRYPOINT_MODULE) / sizeof(_TCHAR);
@@ -57,12 +60,23 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserve
 
 			if (!hEntry) {
 				std::wstring errMessage = StringToWideString(GetLastErrorAsString());
-				MessageBox(NULL, errMessage.c_str(), _T("Error Loading ") HK_ENTRYPOINT_MODULE, MB_ICONERROR | MB_OK);
+				MessageBox(nullptr, errMessage.c_str(), _T("Error Loading ") HK_ENTRYPOINT_MODULE, MB_ICONERROR | MB_OK);
 				exit(1);
-				return FALSE;
 			}
 
-			ogEntryPointCall = (HK_ENTRYPOINT_DELEGATE)GetProcAddress(hEntry, HK_ENTRYPOINT_SYMBOL_STR);
+			GetModuleFileName(hModule, dllPath, MAX_PATH);
+			TCHAR* fName = _tcsrchr(dllPath, '\\') + 1;
+
+			//MessageBox(nullptr, fName, nullptr, 0);
+			if (!_tcsicmp(fName, HK_ENTRYPOINT_MODULE)) {
+				std::cout << "Standalone Mode\n";
+				ogEntryPointCall = reinterpret_cast<HK_ENTRYPOINT_DELEGATE>(GetProcAddress(hEntry, HK_ENTRYPOINT_SYMBOL_STR));
+			}
+			else {
+				std::cout << "Loader Mode\n";
+				IATHook32<adDirect3DCreate9>(GetModuleHandle(nullptr), "D3D9.dll", HK_ENTRYPOINT_SYMBOL_STR, HK_ENTRYPOINT_SYMBOL, &ogEntryPointCall);
+			}
+			
 
 			Initialize();
 			break;
