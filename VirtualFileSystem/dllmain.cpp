@@ -16,6 +16,7 @@
 #include "version.h"
 #include "triggers.h"
 #include "console.h"
+#include <wincon.h>
 
 typedef PDWORD(WINAPI *adDirect3DCreate9)(UINT sdkVersion);
 #define HK_ENTRYPOINT_SYMBOL Direct3DCreate9
@@ -32,7 +33,7 @@ void TryLoadAudioTPK(char *fname);
 void UpdateKnightState(char *fname);
 
 bool ApplyPatches();
-void Initialize();
+void Initialize(bool loaderMode);
 void Deinitialize();
 
 RamFS::Tracker* tpkTracker;
@@ -43,52 +44,53 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserve
 {
 	switch (ul_reason_for_call)
 	{
-		case DLL_PROCESS_ATTACH:
-		{
-			AllocConsole();
-			freopen("CONOUT$", "w", stdout);
+	case DLL_PROCESS_ATTACH:
+	{
+		AllocConsole();
+		freopen("CONOUT$", "w", stdout);
 
-			TCHAR dllPath[MAX_PATH];
-			const UINT dllPathSz = sizeof(dllPath) / sizeof(_TCHAR);
-			const TCHAR* epModule = HK_ENTRYPOINT_MODULE;
-			const UINT epModuleSz = sizeof(HK_ENTRYPOINT_MODULE) / sizeof(_TCHAR);
+		TCHAR dllPath[MAX_PATH];
+		const UINT dllPathSz = sizeof(dllPath) / sizeof(_TCHAR);
+		const TCHAR* epModule = HK_ENTRYPOINT_MODULE;
+		const UINT epModuleSz = sizeof(HK_ENTRYPOINT_MODULE) / sizeof(_TCHAR);
 
-			GetSystemDirectory(dllPath, dllPathSz);
-			_tcsncat_s(dllPath, dllPathSz, _TEXT("\\"), 2);
-			_tcsncat_s(dllPath, dllPathSz, epModule, epModuleSz);
-			HMODULE hEntry = LoadLibrary(dllPath);
+		GetSystemDirectory(dllPath, dllPathSz);
+		_tcsncat_s(dllPath, dllPathSz, _TEXT("\\"), 2);
+		_tcsncat_s(dllPath, dllPathSz, epModule, epModuleSz);
+		HMODULE hEntry = LoadLibrary(dllPath);
 
-			if (!hEntry) {
-				std::wstring errMessage = StringToWideString(GetLastErrorAsString());
-				MessageBox(nullptr, errMessage.c_str(), _T("Error Loading ") HK_ENTRYPOINT_MODULE, MB_ICONERROR | MB_OK);
-				exit(1);
-			}
-
-			GetModuleFileName(hModule, dllPath, MAX_PATH);
-			TCHAR* fName = _tcsrchr(dllPath, '\\') + 1;
-
-			//MessageBox(nullptr, fName, nullptr, 0);
-			if (!_tcsicmp(fName, HK_ENTRYPOINT_MODULE)) {
-				std::cout << "Standalone Mode\n";
-				ogEntryPointCall = reinterpret_cast<HK_ENTRYPOINT_DELEGATE>(GetProcAddress(hEntry, HK_ENTRYPOINT_SYMBOL_STR));
-			}
-			else {
-				std::cout << "Loader Mode\n";
-				IATHook32<adDirect3DCreate9>(GetModuleHandle(nullptr), "D3D9.dll", HK_ENTRYPOINT_SYMBOL_STR, HK_ENTRYPOINT_SYMBOL, &ogEntryPointCall);
-			}
-			
-
-			Initialize();
-			break;
+		if (!hEntry) {
+			std::wstring errMessage = StringToWideString(GetLastErrorAsString());
+			MessageBox(nullptr, errMessage.c_str(), _T("Error Loading ") HK_ENTRYPOINT_MODULE, MB_ICONERROR | MB_OK);
+			exit(1);
 		}
-		case DLL_PROCESS_DETACH:
-		{
-			Deinitialize();
-			break;
+
+		GetModuleFileName(hModule, dllPath, MAX_PATH);
+		TCHAR* fName = _tcsrchr(dllPath, '\\') + 1;
+		bool loaderMode;
+
+		//MessageBox(nullptr, fName, nullptr, 0);
+		if (!_tcsicmp(fName, HK_ENTRYPOINT_MODULE)) {
+			loaderMode = false;
+			ogEntryPointCall = reinterpret_cast<HK_ENTRYPOINT_DELEGATE>(GetProcAddress(hEntry, HK_ENTRYPOINT_SYMBOL_STR));
 		}
-		case DLL_THREAD_ATTACH:
-		case DLL_THREAD_DETACH:
-			break;
+		else {
+			loaderMode = true;
+			IATHook32<adDirect3DCreate9>(GetModuleHandle(nullptr), "D3D9.dll", HK_ENTRYPOINT_SYMBOL_STR, HK_ENTRYPOINT_SYMBOL, &ogEntryPointCall);
+		}
+
+
+		Initialize(loaderMode);
+		break;
+	}
+	case DLL_PROCESS_DETACH:
+	{
+		Deinitialize();
+		break;
+	}
+	case DLL_THREAD_ATTACH:
+	case DLL_THREAD_DETACH:
+		break;
 	}
 	return TRUE;
 }
@@ -107,7 +109,7 @@ void Deinitialize() {
 	if (VirtualFileSystem::DataJp) delete VirtualFileSystem::DataJp;
 }
 
-void Initialize() {
+void Initialize(bool loaderMode) {
 
 	tcout << VER_PRODUCTNAME_STR << " " << VER_VERSION_STRING << "\n";
 	tcout << "Git Commit Hash: " << GIT_COMMIT_HASH << "\n";
@@ -116,7 +118,8 @@ void Initialize() {
 	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	con::SetHandle(hConsole);
 	tcout << "Applying Patches...\n";
-	if (!ApplyPatches()) {
+	bool patched = ApplyPatches();
+	if (!patched) {
 		tcout << con::fgCol<con::Red>;
 		tcout << "Invalid File Checksum. Patches not Applied.\n";
 		tcout << "Are you using a modified executable?\n";
@@ -127,7 +130,27 @@ void Initialize() {
 	}
 	tcout << con::fgCol<con::Gray>;
 
-	srand(time(NULL));
+	if(loaderMode)
+		tcout << "Injector Mode\n";
+	else
+		tcout << "Standalone Mode\n";
+
+	if (patched)
+	{
+		if (loaderMode)
+			SetConsoleTitle(_TEXT(VER_PRODUCTNAME_STR " " VER_VERSION_STRING " - Patched [I]"));
+		else
+			SetConsoleTitle(_TEXT(VER_PRODUCTNAME_STR " " VER_VERSION_STRING " - Patched [S]"));
+	}
+	else
+	{
+		if (loaderMode)
+			SetConsoleTitle(_TEXT(VER_PRODUCTNAME_STR " " VER_VERSION_STRING " - Fallback [I]"));
+		else
+			SetConsoleTitle(_TEXT(VER_PRODUCTNAME_STR " " VER_VERSION_STRING " - Fallback [S]"));
+	}
+
+	srand(time(nullptr));
 
 	tpkTracker = nullptr;
 
@@ -297,7 +320,7 @@ void TryLoadAudioTPK(char* fName) {
 		AudioState.OggDataA = new OggData[nFiles];
 		AudioState.NumOggFilesA = nFiles;
 
-		for (int i = 0; i < nFiles;++i) {
+		for (int i = 0; i < nFiles; ++i) {
 			AudioState.OggDataA[i].Data = (uint8_t*)(AudioState.TpkDataA + entries[i].Offset);
 			AudioState.OggDataA[i].Size = entries[i].Size;
 		}
@@ -328,7 +351,7 @@ void TryLoadAudioTPK(char* fName) {
 		AudioState.OggDataB = new OggData[nFiles];
 		AudioState.NumOggFilesB = (uint32_t)nFiles;
 
-		for (int i = 0; i < nFiles;++i) {
+		for (int i = 0; i < nFiles; ++i) {
 			AudioState.OggDataB[i].Data = (uint8_t*)(AudioState.TpkDataB + entries[i].Offset);
 			AudioState.OggDataB[i].Size = entries[i].Size;
 		}
