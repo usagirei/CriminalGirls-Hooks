@@ -78,11 +78,13 @@ void GameLoop() {
 
 void FirstFrameSetup() {
 	// Keyboard Hook
+	tcout << "Hook Setup" << std::endl;
 #ifndef _DEBUG
-	if (!(hHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHook, NULL, 0)))
+	hHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHook, NULL, 0);
+	if (!hHook)
 		tcout << "Failed to Hook Keyboard. Hotkeys will not function.";
 #endif // !DEBUG
-
+    ModState.SmokeVisible = false;
 	// Enable Blindfold/EyeMask
 	_DR1(GetModuleHandle(0), 0x1C96E4) = 1;
 }
